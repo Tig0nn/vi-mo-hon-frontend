@@ -1,6 +1,6 @@
 export function formatValue(value) {
   if (value === null || value === undefined || value === '') {
-    return 'No data yet';
+    return 'Chưa có dữ liệu';
   }
 
   if (typeof value === 'number') {
@@ -8,11 +8,11 @@ export function formatValue(value) {
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
+    return value ? 'Có' : 'Không';
   }
 
   if (Array.isArray(value)) {
-    return value.length ? value.map(formatValue).join(', ') : 'No data yet';
+    return value.length ? value.map(formatValue).join(', ') : 'Chưa có dữ liệu';
   }
 
   return String(value);

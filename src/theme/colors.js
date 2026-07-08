@@ -1,0 +1,15 @@
+export const colors = {
+  primary: '#3a6a00',
+  primaryContainer: '#6ea638',
+  primaryFixedDim: '#9cd763',
+  onPrimaryContainer: '#1b3600',
+  surfaceMist: '#EEF1EA',
+  appCanvas: '#F6F7F2',
+  surfaceRice: '#FFFFFF',
+  softBorder: '#DDE3D7',
+  onSurface: '#1a1c19',
+  onSurfaceVariant: '#42493a',
+  mossText: '#4D554A',
+  secondaryContainer: '#fda36e',
+  error: '#ba1a1a',
+};

@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { MetricCard } from '../components/MetricCard';
+import { Card } from '../components/Card';
+import { IconBadge } from '../components/IconBadge';
 import { RecentExpenseList } from '../components/RecentExpenseList';
-import { Section } from '../components/Section';
+import { StatCard } from '../components/StatCard';
+import { colors } from '../theme/colors';
 
 export function HomeScreen({
   dashboard,
@@ -14,13 +16,14 @@ export function HomeScreen({
   const profile = data.profile ?? {};
 
   return (
-    <>
-      <Section title="Quick expense">
+    <View style={styles.container}>
+      <Card title="Ghi chú chi tiêu" icon={<IconBadge label="+" />}>
         <TextInput
           autoCapitalize="none"
           editable={!isLoading}
           onChangeText={onChangeExpenseText}
-          placeholder="Example: milk tea 45k"
+          placeholder="Ví dụ: trà sữa 45k"
+          placeholderTextColor={colors.onSurfaceVariant}
           style={styles.input}
           value={expenseText}
         />
@@ -32,50 +35,54 @@ export function HomeScreen({
             (pressed || isLoading) && styles.buttonPressed,
           ]}
         >
-          <Text style={styles.primaryButtonText}>Submit expense</Text>
+          <Text style={styles.primaryButtonText}>Gửi khoản chi</Text>
         </Pressable>
-      </Section>
+      </Card>
 
-      <Section title="Mini dashboard">
+      <Card title="Tổng quan" icon={<IconBadge label="XP" />}>
         <View style={styles.metricGrid}>
-          <MetricCard label="XP" value={profile.xp} />
-          <MetricCard label="Level" value={profile.level} />
-          <MetricCard label="Monthly spent" value={profile.monthlySpent} />
-          <MetricCard label="Monthly budget" value={profile.monthlyBudget} />
+          <StatCard label="XP" value={profile.xp} isPrimary />
+          <StatCard label="Cấp độ" value={profile.level} />
+          <StatCard label="Đã chi tháng này" value={profile.monthlySpent} />
+          <StatCard label="Ngân sách tháng" value={profile.monthlyBudget} />
         </View>
-      </Section>
+      </Card>
 
-      <Section title="Recent expenses">
+      <Card title="Giao dịch gần đây" icon={<IconBadge label="GD" />}>
         <RecentExpenseList expenses={data.recentExpenses} />
-      </Section>
-    </>
+      </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    gap: 16,
+  },
   input: {
-    backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
+    backgroundColor: colors.surfaceMist,
+    borderColor: colors.softBorder,
+    borderRadius: 12,
     borderWidth: 1,
-    color: '#0f172a',
+    color: colors.onSurface,
     fontSize: 16,
-    minHeight: 48,
-    paddingHorizontal: 12,
+    minHeight: 56,
+    paddingHorizontal: 16,
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 56,
     paddingHorizontal: 16,
   },
   buttonPressed: {
-    opacity: 0.72,
+    opacity: 0.8,
+    transform: [{ translateY: 1 }],
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: colors.surfaceRice,
     fontSize: 16,
     fontWeight: '700',
   },

@@ -13,14 +13,15 @@ import { BossScreen } from './src/screens/BossScreen';
 import { CharacterScreen } from './src/screens/CharacterScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { colors } from './src/theme/colors';
 
 const USER_ID = 'mock-user';
 
 const TABS = [
-  { key: 'home', label: 'Home' },
-  { key: 'boss', label: 'Boss' },
-  { key: 'character', label: 'Character' },
-  { key: 'profile', label: 'Profile' },
+  { key: 'home', label: 'Trang chủ', icon: 'TC' },
+  { key: 'boss', label: 'Boss', icon: 'B' },
+  { key: 'character', label: 'Nhân vật', icon: 'NV' },
+  { key: 'profile', label: 'Hồ sơ', icon: 'HS' },
 ];
 
 function BottomTabs({ activeTab, onChangeTab }) {
@@ -39,6 +40,11 @@ function BottomTabs({ activeTab, onChangeTab }) {
               pressed && styles.tabButtonPressed,
             ]}
           >
+            <View style={[styles.tabIcon, isActive && styles.activeTabIcon]}>
+              <Text style={[styles.tabIconText, isActive && styles.activeTabIconText]}>
+                {tab.icon}
+              </Text>
+            </View>
             <Text style={[styles.tabText, isActive && styles.activeTabText]}>{tab.label}</Text>
           </Pressable>
         );
@@ -89,7 +95,7 @@ export default function App() {
     const trimmedText = expenseText.trim();
 
     if (!trimmedText) {
-      setError('Please enter an expense before submitting.');
+      setError('Vui lòng nhập khoản chi trước khi gửi.');
       return;
     }
 
@@ -128,28 +134,32 @@ export default function App() {
 
   const healthLabel = useMemo(() => {
     if (healthStatus === 'connected') {
-      return 'Backend connected';
+      return 'Backend đã kết nối';
     }
 
     if (healthStatus === 'failed') {
-      return 'Backend failed';
+      return 'Backend lỗi';
     }
 
-    return 'Checking backend...';
+    return 'Đang kiểm tra backend...';
   }, [healthStatus]);
 
-  const screenTitle = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Home';
+  const screenTitle = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Trang chủ';
 
   return (
     <View style={styles.app}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Vi Mo Hon</Text>
-          <Text style={styles.subtitle}>{screenTitle}</Text>
-          <View style={[styles.statusPill, styles[healthStatus]]}>
-            <Text style={styles.statusText}>{healthLabel}</Text>
+          <View style={styles.headerTopRow}>
+            <Text style={styles.appTitle}>Ví Mỏ Hỗn</Text>
+            <View style={[styles.statusPill, styles[healthStatus]]}>
+              <Text style={[styles.statusText, styles[`${healthStatus}Text`]]}>
+                {healthLabel}
+              </Text>
+            </View>
           </View>
+          <Text style={styles.subtitle}>{screenTitle}</Text>
         </View>
 
         {error ? (
@@ -162,8 +172,8 @@ export default function App() {
 
         {isLoading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color="#2563eb" />
-            <Text style={styles.mutedText}>Loading dashboard...</Text>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.mutedText}>Đang tải dashboard...</Text>
           </View>
         ) : null}
 
@@ -196,7 +206,7 @@ export default function App() {
             (pressed || isLoading) && styles.secondaryButtonPressed,
           ]}
         >
-          <Text style={styles.secondaryButtonText}>Refresh dashboard</Text>
+          <Text style={styles.secondaryButtonText}>Làm mới dashboard</Text>
         </Pressable>
       </ScrollView>
 
@@ -207,75 +217,93 @@ export default function App() {
 
 const styles = StyleSheet.create({
   app: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.appCanvas,
     flex: 1,
   },
   content: {
     gap: 16,
     padding: 20,
-    paddingBottom: 104,
-    paddingTop: 52,
+    paddingBottom: 120,
+    paddingTop: 60,
   },
   header: {
-    gap: 8,
+    gap: 4,
+    marginBottom: 8,
+  },
+  headerTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
   },
   appTitle: {
-    color: '#0f172a',
-    fontSize: 30,
+    color: colors.primary,
+    flex: 1,
+    fontSize: 28,
     fontWeight: '800',
   },
   subtitle: {
-    color: '#475569',
-    fontSize: 17,
-    fontWeight: '700',
+    color: colors.onSurfaceVariant,
+    fontSize: 16,
+    fontWeight: '600',
   },
   statusPill: {
     alignSelf: 'flex-start',
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   checking: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.surfaceMist,
+  },
+  checkingText: {
+    color: colors.mossText,
   },
   connected: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.primaryContainer,
+  },
+  connectedText: {
+    color: colors.onPrimaryContainer,
   },
   failed: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.error,
+  },
+  failedText: {
+    color: colors.surfaceRice,
   },
   statusText: {
-    color: '#0f172a',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
   },
   secondaryButton: {
     alignItems: 'center',
-    borderColor: '#2563eb',
-    borderRadius: 8,
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.softBorder,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 44,
+    marginTop: 16,
+    minHeight: 48,
     paddingHorizontal: 16,
   },
   secondaryButtonPressed: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.surfaceMist,
     opacity: 0.75,
   },
   secondaryButtonText: {
-    color: '#1d4ed8',
+    color: colors.mossText,
     fontSize: 15,
     fontWeight: '700',
   },
   errorBox: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
-    borderRadius: 8,
+    backgroundColor: '#ffdad6',
+    borderColor: '#ffb4ab',
+    borderRadius: 12,
     borderWidth: 1,
     padding: 14,
   },
   errorText: {
-    color: '#b91c1c',
+    color: colors.error,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -283,46 +311,71 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
+    paddingVertical: 8,
   },
   mutedText: {
-    color: '#64748b',
+    color: colors.onSurfaceVariant,
     fontSize: 14,
     lineHeight: 20,
   },
   tabBar: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.softBorder,
     borderTopWidth: 1,
     bottom: 0,
     flexDirection: 'row',
     gap: 8,
     left: 0,
     padding: 12,
-    paddingBottom: 18,
+    paddingBottom: 24,
     position: 'absolute',
     right: 0,
   },
   tabButton: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: 4,
   },
   activeTabButton: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryContainer,
   },
   tabButtonPressed: {
     opacity: 0.7,
   },
+  tabIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderColor: colors.softBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    marginBottom: 4,
+    width: 24,
+  },
+  activeTabIcon: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabIconText: {
+    color: colors.mossText,
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  activeTabIconText: {
+    color: colors.surfaceRice,
+  },
   tabText: {
-    color: '#64748b',
+    color: colors.mossText,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   activeTabText: {
-    color: '#1d4ed8',
+    color: colors.onPrimaryContainer,
+    fontWeight: '700',
   },
 });

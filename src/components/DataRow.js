@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { formatValue } from '../utils/formatValue';
+import { colors } from '../theme/colors';
 
 export function DataRow({ label, value }) {
   return (
@@ -14,19 +15,22 @@ export function DataRow({ label, value }) {
 
 const styles = StyleSheet.create({
   dataRow: {
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: colors.softBorder,
     borderBottomWidth: 1,
-    gap: 4,
-    paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
   dataLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '700',
+    color: colors.mossText,
+    fontSize: 14,
+    fontWeight: '600',
   },
   dataValue: {
-    color: '#0f172a',
+    color: colors.onSurface,
     fontSize: 15,
-    lineHeight: 21,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
 });

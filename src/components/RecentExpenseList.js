@@ -1,25 +1,40 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { formatValue } from '../utils/formatValue';
+import { colors } from '../theme/colors';
 
 export function RecentExpenseList({ expenses }) {
   if (!Array.isArray(expenses) || expenses.length === 0) {
-    return <Text style={styles.mutedText}>No recent expenses yet.</Text>;
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIconWrapper}>
+          <Text style={styles.emptyIconText}>₫</Text>
+        </View>
+        <Text style={styles.emptyTitle}>Chưa có giao dịch</Text>
+        <Text style={styles.emptyDescription}>
+          Bạn chưa ghi khoản chi nào. Hãy nhập khoản chi đầu tiên ở ô phía trên.
+        </Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.list}>
       {expenses.map((expense, index) => (
         <View key={expense?.id || expense?._id || index} style={styles.listItem}>
-          <Text selectable style={styles.itemTitle}>
-            {expense?.text || expense?.description || `Expense ${index + 1}`}
-          </Text>
-          <Text selectable style={styles.mutedText}>
-            Amount: {formatValue(expense?.amount)}
-          </Text>
-          {expense?.category ? (
-            <Text selectable style={styles.mutedText}>
-              Category: {formatValue(expense.category)}
+          <View style={styles.row}>
+            <Text selectable style={styles.itemTitle}>
+              {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
             </Text>
+            <Text selectable style={styles.amountText}>
+              {formatValue(expense?.amount)}
+            </Text>
+          </View>
+          {expense?.category ? (
+            <View style={styles.categoryBadge}>
+              <Text selectable style={styles.categoryText}>
+                {formatValue(expense.category)}
+              </Text>
+            </View>
           ) : null}
         </View>
       ))}
@@ -28,25 +43,78 @@ export function RecentExpenseList({ expenses }) {
 }
 
 const styles = StyleSheet.create({
-  list: {
-    gap: 10,
+  emptyState: {
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+    paddingVertical: 28,
   },
-  listItem: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    padding: 12,
+  emptyIconWrapper: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderRadius: 32,
+    height: 64,
+    justifyContent: 'center',
+    marginBottom: 8,
+    width: 64,
   },
-  itemTitle: {
-    color: '#0f172a',
+  emptyIconText: {
+    color: colors.mossText,
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  emptyTitle: {
+    color: colors.onSurface,
     fontSize: 16,
     fontWeight: '700',
   },
-  mutedText: {
-    color: '#64748b',
+  emptyDescription: {
+    color: colors.onSurfaceVariant,
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'center',
+  },
+  list: {
+    gap: 12,
+  },
+  listItem: {
+    backgroundColor: colors.surfaceMist,
+    borderColor: colors.softBorder,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    padding: 16,
+  },
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  itemTitle: {
+    color: colors.onSurface,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  amountText: {
+    color: colors.error,
+    fontSize: 16,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.softBorder,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  categoryText: {
+    color: colors.mossText,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
