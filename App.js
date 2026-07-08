@@ -2,186 +2,53 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { apiGet, apiPost } from './src/api/client';
+import { BossScreen } from './src/screens/BossScreen';
+import { CharacterScreen } from './src/screens/CharacterScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
 
 const USER_ID = 'mock-user';
 
-function formatValue(value) {
-  if (value === null || value === undefined) {
-    return 'Chưa có dữ liệu';
-  }
+const TABS = [
+  { key: 'home', label: 'Home' },
+  { key: 'boss', label: 'Boss' },
+  { key: 'character', label: 'Character' },
+  { key: 'profile', label: 'Profile' },
+];
 
-  if (typeof value === 'number') {
-    return new Intl.NumberFormat('vi-VN').format(value);
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Có' : 'Không';
-  }
-
-  return String(value);
-}
-
-function Section({ title, children }) {
+function BottomTabs({ activeTab, onChangeTab }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function MetricCard({ label, value }) {
-  return (
-    <View style={styles.metricCard}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text selectable style={styles.metricValue}>
-        {formatValue(value)}
-      </Text>
-    </View>
-  );
-}
-
-function ChallengeDetail({ label, value }) {
-  return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text selectable style={styles.detailValue}>
-        {formatValue(value)}
-      </Text>
-    </View>
-  );
-}
-
-function BossProgress({ boss }) {
-  if (!boss) {
-    return <Text style={styles.mutedText}>Chưa có boss progress.</Text>;
-  }
-
-  const currentHp = Number(boss.currentHp ?? 0);
-  const maxHp = Number(boss.maxHp ?? 0);
-  const hpRemainingPercent = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 0;
-  const defeatProgressPercent =
-    maxHp > 0 ? Math.round(((maxHp - currentHp) / maxHp) * 100) : 0;
-
-  return (
-    <View style={styles.list}>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Boss name</Text>
-        <Text selectable style={styles.rowValue}>
-          {formatValue(boss.name)}
-        </Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Boss HP</Text>
-        <Text selectable style={styles.rowValue}>
-          {currentHp} / {maxHp}
-        </Text>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>HP còn lại</Text>
-        <Text selectable style={styles.rowValue}>
-          {hpRemainingPercent}%
-        </Text>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${hpRemainingPercent}%` }]} />
-        </View>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Tiến độ đánh boss</Text>
-        <Text selectable style={styles.rowValue}>
-          {defeatProgressPercent}%
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function ChallengeList({ challenges, completingChallengeId, onCompleteChallenge }) {
-  if (!Array.isArray(challenges) || challenges.length === 0) {
-    return <Text style={styles.mutedText}>Chưa có thử thách đang hoạt động.</Text>;
-  }
-
-  return (
-    <View style={styles.list}>
-      {challenges.map((challenge, index) => {
-        const challengeId = challenge?.id || challenge?._id;
-        const title = challenge?.title || `Thử thách ${index + 1}`;
-        const isCompleting = completingChallengeId === challengeId;
+    <View style={styles.tabBar}>
+      {TABS.map((tab) => {
+        const isActive = activeTab === tab.key;
 
         return (
-          <View key={challengeId || title} style={styles.listItem}>
-            <Text selectable style={styles.itemTitle}>
-              {title}
-            </Text>
-
-            <Text selectable style={styles.itemDescription}>
-              {formatValue(challenge?.description)}
-            </Text>
-
-            <View style={styles.detailGrid}>
-              <ChallengeDetail label="Reward XP" value={challenge?.rewardXp} />
-              <ChallengeDetail label="Boss damage" value={challenge?.bossDamage} />
-              <ChallengeDetail label="Difficulty" value={challenge?.difficulty} />
-              <ChallengeDetail label="Status" value={challenge?.status} />
-            </View>
-
-            <Pressable
-              disabled={!challengeId || isCompleting}
-              onPress={() => onCompleteChallenge(challengeId)}
-              style={({ pressed }) => [
-                styles.challengeButton,
-                (pressed || isCompleting || !challengeId) && styles.buttonPressed,
-              ]}
-            >
-              {isCompleting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={styles.buttonText}>Hoàn thành thử thách</Text>
-              )}
-            </Pressable>
-          </View>
+          <Pressable
+            key={tab.key}
+            onPress={() => onChangeTab(tab.key)}
+            style={({ pressed }) => [
+              styles.tabButton,
+              isActive && styles.activeTabButton,
+              pressed && styles.tabButtonPressed,
+            ]}
+          >
+            <Text style={[styles.tabText, isActive && styles.activeTabText]}>{tab.label}</Text>
+          </Pressable>
         );
       })}
     </View>
   );
 }
 
-function RecentExpenseList({ expenses }) {
-  if (!Array.isArray(expenses) || expenses.length === 0) {
-    return <Text style={styles.mutedText}>Chưa có khoản chi gần đây.</Text>;
-  }
-
-  return (
-    <View style={styles.list}>
-      {expenses.map((expense, index) => (
-        <View key={expense?.id || expense?._id || index} style={styles.listItem}>
-          <Text selectable style={styles.itemTitle}>
-            {expense?.text || expense?.description || `Khoản chi ${index + 1}`}
-          </Text>
-          {expense?.amount !== undefined ? (
-            <Text selectable style={styles.mutedText}>
-              Số tiền: {formatValue(expense.amount)}
-            </Text>
-          ) : null}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export default function App() {
+  const [activeTab, setActiveTab] = useState('home');
   const [healthStatus, setHealthStatus] = useState('checking');
   const [dashboard, setDashboard] = useState(null);
   const [expenseText, setExpenseText] = useState('');
@@ -205,7 +72,6 @@ export default function App() {
 
     try {
       const response = await apiGet(`/dashboard/${USER_ID}`);
-      console.log('Dashboard response', response);
       setDashboard(response);
     } catch (dashboardError) {
       setError(dashboardError.message);
@@ -216,13 +82,14 @@ export default function App() {
 
   useEffect(() => {
     loadHealth();
-  }, [loadHealth]);
+    loadDashboard();
+  }, [loadDashboard, loadHealth]);
 
-  const handleSubmit = async () => {
+  const handleSubmitExpense = async () => {
     const trimmedText = expenseText.trim();
 
     if (!trimmedText) {
-      setError('Vui lòng nhập khoản chi trước khi gửi.');
+      setError('Please enter an expense before submitting.');
       return;
     }
 
@@ -235,9 +102,7 @@ export default function App() {
         text: trimmedText,
       });
       setExpenseText('');
-      const response = await apiGet(`/dashboard/${USER_ID}`);
-      console.log('Dashboard response', response);
-      setDashboard(response);
+      await loadDashboard();
     } catch (submitError) {
       setError(submitError.message);
     } finally {
@@ -253,9 +118,7 @@ export default function App() {
       await apiPost(`/challenges/${challengeId}/complete`, {
         userId: USER_ID,
       });
-      const response = await apiGet(`/dashboard/${USER_ID}`);
-      console.log('Dashboard response', response);
-      setDashboard(response);
+      await loadDashboard();
     } catch (challengeError) {
       setError(challengeError.message);
     } finally {
@@ -265,56 +128,29 @@ export default function App() {
 
   const healthLabel = useMemo(() => {
     if (healthStatus === 'connected') {
-      return 'Connected';
+      return 'Backend connected';
     }
 
     if (healthStatus === 'failed') {
-      return 'Failed';
+      return 'Backend failed';
     }
 
-    return 'Checking...';
+    return 'Checking backend...';
   }, [healthStatus]);
 
-  const profile = dashboard?.data?.profile;
-  const boss = dashboard?.data?.boss;
-  const activeChallenges = dashboard?.data?.activeChallenges;
-  const recentExpenses = dashboard?.data?.recentExpenses;
+  const screenTitle = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Home';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.app}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Ví Mỏ Hỗn</Text>
-          <Text style={styles.subtitle}>Quick expense slice</Text>
-        </View>
-
-        <Section title="Backend">
+          <Text style={styles.appTitle}>Vi Mo Hon</Text>
+          <Text style={styles.subtitle}>{screenTitle}</Text>
           <View style={[styles.statusPill, styles[healthStatus]]}>
             <Text style={styles.statusText}>{healthLabel}</Text>
           </View>
-        </Section>
-
-        <Section title="Nhập nhanh khoản chi">
-          <TextInput
-            autoCapitalize="none"
-            editable={!isLoading}
-            onChangeText={setExpenseText}
-            placeholder="VD: trà sữa 45k"
-            style={styles.input}
-            value={expenseText}
-          />
-          <Pressable
-            disabled={isLoading}
-            onPress={handleSubmit}
-            style={({ pressed }) => [
-              styles.button,
-              (pressed || isLoading) && styles.buttonPressed,
-            ]}
-          >
-            <Text style={styles.buttonText}>Gửi khoản chi</Text>
-          </Pressable>
-        </Section>
+        </View>
 
         {error ? (
           <View style={styles.errorBox}>
@@ -327,67 +163,61 @@ export default function App() {
         {isLoading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color="#2563eb" />
-            <Text style={styles.mutedText}>Đang tải dữ liệu...</Text>
+            <Text style={styles.mutedText}>Loading dashboard...</Text>
           </View>
         ) : null}
 
-        <Section title="Dashboard">
-          <Pressable
-            disabled={isLoading}
-            onPress={loadDashboard}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              (pressed || isLoading) && styles.secondaryButtonPressed,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Refresh dashboard</Text>
-          </Pressable>
+        {activeTab === 'home' ? (
+          <HomeScreen
+            dashboard={dashboard}
+            expenseText={expenseText}
+            isLoading={isLoading}
+            onChangeExpenseText={setExpenseText}
+            onSubmitExpense={handleSubmitExpense}
+          />
+        ) : null}
 
-          <View style={styles.metricGrid}>
-            <MetricCard label="Total XP" value={profile?.xp} />
-            <MetricCard label="Discipline" value={profile?.discipline} />
-            <MetricCard label="Level" value={profile?.level} />
-            <MetricCard label="Monthly spent" value={profile?.monthlySpent} />
-            <MetricCard label="Monthly budget" value={profile?.monthlyBudget} />
-          </View>
-        </Section>
-
-        <Section title="Stats">
-          <Text style={styles.mutedText}>Stats chưa được backend trả về trong slice này.</Text>
-        </Section>
-
-        <Section title="Boss progress">
-          <BossProgress boss={boss} />
-        </Section>
-
-        <Section title="Active challenges">
-          <ChallengeList
-            challenges={activeChallenges}
+        {activeTab === 'boss' ? (
+          <BossScreen
+            dashboard={dashboard}
             completingChallengeId={completingChallengeId}
             onCompleteChallenge={handleCompleteChallenge}
           />
-        </Section>
+        ) : null}
 
-        <Section title="Recent expenses">
-          <RecentExpenseList expenses={recentExpenses} />
-        </Section>
+        {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}
+        {activeTab === 'profile' ? <ProfileScreen dashboard={dashboard} /> : null}
+
+        <Pressable
+          disabled={isLoading}
+          onPress={loadDashboard}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            (pressed || isLoading) && styles.secondaryButtonPressed,
+          ]}
+        >
+          <Text style={styles.secondaryButtonText}>Refresh dashboard</Text>
+        </Pressable>
       </ScrollView>
-    </SafeAreaView>
+
+      <BottomTabs activeTab={activeTab} onChangeTab={setActiveTab} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  app: {
     backgroundColor: '#f8fafc',
+    flex: 1,
   },
   content: {
-    padding: 20,
     gap: 16,
+    padding: 20,
+    paddingBottom: 104,
+    paddingTop: 52,
   },
   header: {
-    gap: 4,
-    paddingTop: 8,
+    gap: 8,
   },
   appTitle: {
     color: '#0f172a',
@@ -395,20 +225,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   subtitle: {
-    color: '#64748b',
-    fontSize: 15,
-  },
-  section: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
-  },
-  sectionTitle: {
-    color: '#0f172a',
-    fontSize: 18,
+    color: '#475569',
+    fontSize: 17,
     fontWeight: '700',
   },
   statusPill: {
@@ -431,39 +249,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  input: {
-    backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 16,
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  button: {
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  buttonPressed: {
-    opacity: 0.72,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   secondaryButton: {
     alignItems: 'center',
     borderColor: '#2563eb',
     borderRadius: 8,
     borderWidth: 1,
-    minHeight: 44,
     justifyContent: 'center',
+    minHeight: 44,
     paddingHorizontal: 16,
   },
   secondaryButtonPressed: {
@@ -474,14 +266,6 @@ const styles = StyleSheet.create({
     color: '#1d4ed8',
     fontSize: 15,
     fontWeight: '700',
-  },
-  challengeButton: {
-    alignItems: 'center',
-    backgroundColor: '#16a34a',
-    borderRadius: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
   },
   errorBox: {
     backgroundColor: '#fef2f2',
@@ -500,101 +284,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  metricGrid: {
-    gap: 12,
-  },
-  metricCard: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-    padding: 14,
-  },
-  metricLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  metricValue: {
-    color: '#0f172a',
-    fontSize: 20,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '800',
-  },
-  list: {
-    gap: 10,
-  },
-  row: {
-    alignItems: 'flex-start',
-    borderBottomColor: '#e2e8f0',
-    borderBottomWidth: 1,
-    gap: 4,
-    paddingBottom: 10,
-  },
-  rowLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  rowValue: {
-    color: '#0f172a',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  listItem: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    padding: 12,
-  },
-  itemTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  itemDescription: {
-    color: '#334155',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  detailGrid: {
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'space-between',
-  },
-  detailLabel: {
-    color: '#64748b',
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  detailValue: {
-    color: '#0f172a',
-    flex: 1,
-    fontSize: 13,
-    textAlign: 'right',
-  },
   mutedText: {
     color: '#64748b',
     fontSize: 14,
     lineHeight: 20,
   },
-  progressTrack: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 999,
-    height: 10,
-    overflow: 'hidden',
-    width: '100%',
+  tabBar: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderTopWidth: 1,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 8,
+    left: 0,
+    padding: 12,
+    paddingBottom: 18,
+    position: 'absolute',
+    right: 0,
   },
-  progressFill: {
-    backgroundColor: '#22c55e',
-    borderRadius: 999,
-    height: '100%',
+  tabButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 4,
+  },
+  activeTabButton: {
+    backgroundColor: '#eff6ff',
+  },
+  tabButtonPressed: {
+    opacity: 0.7,
+  },
+  tabText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  activeTabText: {
+    color: '#1d4ed8',
   },
 });
