@@ -6,7 +6,7 @@ import { DataRow } from '../components/DataRow';
 import { IconBadge } from '../components/IconBadge';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
-import { formatValue } from '../utils/formatValue';
+import { formatTargetDate, formatVnd, GOAL_LABELS } from '../utils/profile';
 import {
   cancelDailyExpenseReminder,
   formatReminderTime,
@@ -16,20 +16,10 @@ import {
   scheduleTestExpenseReminder,
 } from '../utils/notifications';
 
-const USER_ID = 'mock-user';
-const TONE_OPTIONS = ['gentle', 'funny', 'sarcastic-light', 'strict-but-kind'];
 const DEFAULT_REMINDER_TIME = { hour: 20, minute: 30 };
 
 function profileValue(profile, primaryKey, fallbackKey = null) {
   return profile?.[primaryKey] ?? (fallbackKey ? profile?.[fallbackKey] : undefined);
-}
-
-function triggersToText(triggers) {
-  if (Array.isArray(triggers)) {
-    return triggers.join(', ');
-  }
-
-  return triggers ? String(triggers) : '';
 }
 
 function createFormState(profile) {
@@ -39,9 +29,6 @@ function createFormState(profile) {
     displayName: profileValue(profile, 'displayName', 'name') || '',
     monthlyBudget:
       monthlyBudget === null || monthlyBudget === undefined ? '' : String(monthlyBudget),
-    mainGoal: profileValue(profile, 'mainGoal', 'goal') || '',
-    triggers: triggersToText(profile?.triggers),
-    preferredTone: profileValue(profile, 'preferredTone', 'tone') || '',
   };
 }
 
@@ -62,24 +49,6 @@ function parseMonthlyBudget(value) {
   return Number.isFinite(monthlyBudget) && monthlyBudget > 0 ? monthlyBudget : null;
 }
 
-function parseTriggers(value) {
-  return value
-    .split(',')
-    .map((trigger) => trigger.trim())
-    .filter(Boolean);
-}
-
-function SettingRow({ label, value }) {
-  return (
-    <View style={styles.settingRow}>
-      <Text style={styles.settingLabel}>{label}</Text>
-      <Text selectable style={styles.settingValue}>
-        {formatValue(value)}
-      </Text>
-    </View>
-  );
-}
-
 function parseReminderTimeInput(value) {
   const match = value.trim().match(/^(\d{2}):(\d{2})$/);
 
@@ -97,8 +66,12 @@ function parseReminderTimeInput(value) {
   return { hour, minute };
 }
 
-export function ProfileScreen({ dashboard, onRefreshDashboard }) {
-  const profile = (dashboard?.data ?? dashboard ?? {}).profile ?? {};
+export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefreshDashboard }) {
+  const dashboardProfile = (dashboard?.data ?? dashboard)?.profile;
+  const profile = useMemo(
+    () => ({ ...(dashboardProfile || {}), ...(savedProfile || {}) }),
+    [dashboardProfile, savedProfile]
+  );
   const currentFormState = useMemo(() => createFormState(profile), [profile]);
   const [form, setForm] = useState(currentFormState);
   const [isEditing, setIsEditing] = useState(false);
@@ -175,10 +148,6 @@ export function ProfileScreen({ dashboard, onRefreshDashboard }) {
   const handleSave = async () => {
     const displayName = form.displayName.trim();
     const monthlyBudget = parseMonthlyBudget(form.monthlyBudget);
-    const mainGoal = form.mainGoal.trim();
-    const triggers = parseTriggers(form.triggers);
-    const preferredTone = form.preferredTone.trim();
-
     if (!displayName) {
       setFormError('Tên hiển thị không được để trống.');
       return;
@@ -189,47 +158,19 @@ export function ProfileScreen({ dashboard, onRefreshDashboard }) {
       return;
     }
 
-    const basicPayload = { displayName };
-    const extendedPayload = { displayName };
+    const payload = { displayName };
 
     if (monthlyBudget !== undefined) {
-      basicPayload.monthlyBudget = monthlyBudget;
-      extendedPayload.monthlyBudget = monthlyBudget;
+      payload.monthlyBudget = monthlyBudget;
     }
-
-    if (mainGoal) {
-      extendedPayload.mainGoal = mainGoal;
-    }
-
-    if (triggers.length) {
-      extendedPayload.triggers = triggers;
-    }
-
-    if (preferredTone) {
-      extendedPayload.preferredTone = preferredTone;
-    }
-
-    const hasExtendedFields =
-      Boolean(mainGoal) || triggers.length > 0 || Boolean(preferredTone);
 
     setIsSaving(true);
     setFormError('');
     setSuccessMessage('');
 
     try {
-      try {
-        await apiPatch(`/profile/${USER_ID}`, extendedPayload);
-        setSuccessMessage('Đã lưu hồ sơ thành công.');
-      } catch (saveError) {
-        if (!hasExtendedFields) {
-          throw saveError;
-        }
-
-        await apiPatch(`/profile/${USER_ID}`, basicPayload);
-        setSuccessMessage(
-          'Đã lưu thông tin cơ bản. Một vài trường nâng cao chưa được backend hỗ trợ.'
-        );
-      }
+      await apiPatch(`/profile/${userId}`, payload);
+      setSuccessMessage('Đã lưu hồ sơ thành công.');
 
       await onRefreshDashboard?.();
       setIsEditing(false);
@@ -390,61 +331,6 @@ export function ProfileScreen({ dashboard, onRefreshDashboard }) {
             />
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Mục tiêu tài chính</Text>
-            <TextInput
-              editable={!isSaving}
-              onChangeText={(value) => updateFormField('mainGoal', value)}
-              placeholder="Ví dụ: Tiết kiệm 20 triệu"
-              placeholderTextColor={colors.onSurfaceVariant}
-              style={styles.input}
-              value={form.mainGoal}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Những lúc bạn dễ tiêu tiền</Text>
-            <TextInput
-              editable={!isSaving}
-              onChangeText={(value) => updateFormField('triggers', value)}
-              placeholder="trà sữa, flash sale, shopee"
-              placeholderTextColor={colors.onSurfaceVariant}
-              style={styles.input}
-              value={form.triggers}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Phong cách nhắc nhở</Text>
-            <View style={styles.toneGrid}>
-              {TONE_OPTIONS.map((tone) => {
-                const isSelected = form.preferredTone === tone;
-
-                return (
-                  <Pressable
-                    disabled={isSaving}
-                    key={tone}
-                    onPress={() => updateFormField('preferredTone', tone)}
-                    style={({ pressed }) => [
-                      styles.toneButton,
-                      isSelected && styles.selectedToneButton,
-                      pressed && styles.buttonPressed,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.toneButtonText,
-                        isSelected && styles.selectedToneButtonText,
-                      ]}
-                    >
-                      {tone}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
           <View style={styles.actionRow}>
             <Pressable
               disabled={isSaving}
@@ -480,14 +366,14 @@ export function ProfileScreen({ dashboard, onRefreshDashboard }) {
   return (
     <View style={styles.container}>
       <Card title="Kế hoạch tiền bạc" icon={<IconBadge label="₫" />}>
-        <DataRow label="Ngân sách tháng" value={profile.monthlyBudget ?? profile.budget} />
-        <DataRow label="Đã chi tháng này" value={profile.monthlySpent} />
-        <DataRow label="Mục tiêu tài chính" value={profile.mainGoal ?? profile.goal} />
-      </Card>
-
-      <Card title="Cá nhân hóa nhắc nhở" icon={<IconBadge label="CN" />}>
-        <SettingRow label="Những lúc bạn dễ tiêu tiền" value={profile.triggers} />
-        <SettingRow label="Phong cách nhắc nhở" value={profile.preferredTone ?? profile.tone} />
+        <DataRow
+          label="Mục tiêu"
+          value={GOAL_LABELS[profile.mainGoal] || 'Chưa thiết lập mục tiêu'}
+        />
+        <DataRow label="Số tiền muốn tiết kiệm" value={formatVnd(profile.targetAmount)} />
+        <DataRow label="Thời hạn hoàn thành" value={formatTargetDate(profile.targetDate)} />
+        <DataRow label="Giới hạn chi tiêu tháng" value={formatVnd(profile.monthlyBudget ?? profile.budget)} />
+        <DataRow label="Đã chi tháng này" value={formatVnd(profile.monthlySpent)} />
       </Card>
 
       <Card title="Nhắc nhở hằng ngày" icon={<IconBadge label="NR" variant="warm" />}>
@@ -646,25 +532,6 @@ const styles = StyleSheet.create({
   field: {
     gap: 8,
   },
-  settingRow: {
-    borderBottomColor: colors.softBorder,
-    borderBottomWidth: 1,
-    gap: 8,
-    paddingVertical: 12,
-  },
-  settingLabel: {
-    color: colors.mossText,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  settingValue: {
-    color: colors.onSurface,
-    flexShrink: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
   label: {
     color: colors.mossText,
     fontSize: 14,
@@ -677,33 +544,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     color: colors.onSurface,
-  },
-  toneGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  toneButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
-  selectedToneButton: {
-    backgroundColor: colors.primaryContainer,
-    borderColor: colors.primary,
-  },
-  toneButtonText: {
-    color: colors.mossText,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  selectedToneButtonText: {
-    color: colors.onPrimaryContainer,
   },
   timeEditor: {
     backgroundColor: colors.surfaceMist,

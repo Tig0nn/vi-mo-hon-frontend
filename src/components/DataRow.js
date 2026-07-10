@@ -17,9 +17,7 @@ const styles = StyleSheet.create({
   dataRow: {
     borderBottomColor: colors.softBorder,
     borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 6,
     paddingVertical: 12,
   },
   dataLabel: {
@@ -29,8 +27,10 @@ const styles = StyleSheet.create({
   },
   dataValue: {
     color: colors.onSurface,
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
+    lineHeight: 22,
   },
 });

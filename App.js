@@ -13,10 +13,12 @@ import { BossScreen } from './src/screens/BossScreen';
 import { CharacterScreen } from './src/screens/CharacterScreen';
 import { CoachScreen } from './src/screens/CoachScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { colors } from './src/theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isCompleteProfile } from './src/utils/profile';
 
-const USER_ID = 'mock-user';
 
 const TABS = [
   { key: 'home', label: 'Trang chủ', icon: 'TC' },
@@ -43,11 +45,25 @@ function BottomTabs({ activeTab, onChangeTab }) {
             ]}
           >
             <View style={[styles.tabIcon, isActive && styles.activeTabIcon]}>
-              <Text style={[styles.tabIconText, isActive && styles.activeTabIconText]}>
+              <Text
+                style={[
+                  styles.tabIconText,
+                  isActive && styles.activeTabIconText,
+                ]}
+              >
                 {tab.icon}
               </Text>
             </View>
-            <Text style={[styles.tabText, isActive && styles.activeTabText]}>{tab.label}</Text>
+
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.tabText,
+                isActive && styles.activeTabText,
+              ]}
+            >
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -55,43 +71,77 @@ function BottomTabs({ activeTab, onChangeTab }) {
   );
 }
 
+function profileFromResponse(response) {
+  return response?.data?.profile ?? response?.profile ?? response?.data ?? response;
+}
+
 export default function App() {
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [userId, setUserId] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState('');
   const [activeTab, setActiveTab] = useState('home');
-  const [healthStatus, setHealthStatus] = useState('checking');
   const [dashboard, setDashboard] = useState(null);
   const [expenseText, setExpenseText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [completingChallengeId, setCompletingChallengeId] = useState(null);
   const [error, setError] = useState('');
 
-  const loadHealth = useCallback(async () => {
-    try {
-      await apiGet('/health');
-      setHealthStatus('connected');
-    } catch (healthError) {
-      setHealthStatus('failed');
-      setError(healthError.message);
-    }
-  }, []);
-
   const loadDashboard = useCallback(async () => {
+    if (!userId) return;
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await apiGet(`/dashboard/${USER_ID}`);
+      const response = await apiGet(`/dashboard/${userId}`);
       setDashboard(response);
     } catch (dashboardError) {
       setError(dashboardError.message);
     } finally {
       setIsLoading(false);
     }
+  }, [userId]);
+
+  useEffect(() => {
+    async function bootstrap() {
+      setIsBootstrapping(true);
+      setBootstrapError('');
+      try {
+        let storedUserId = await AsyncStorage.getItem('vmh_user_id');
+        if (!storedUserId) {
+          storedUserId = `vmh_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+          await AsyncStorage.setItem('vmh_user_id', storedUserId);
+        }
+        setUserId(storedUserId);
+
+        try {
+          const response = await apiGet(`/profile/${storedUserId}`);
+          const nextProfile = profileFromResponse(response);
+          setProfile(nextProfile);
+          setNeedsOnboarding(!isCompleteProfile(nextProfile));
+        } catch (profileError) {
+          if (profileError.status === 404) {
+            setProfile(null);
+            setNeedsOnboarding(true);
+          } else {
+            setBootstrapError(profileError.message || 'Không thể kết nối máy chủ.');
+          }
+        }
+      } catch (bootstrapFailure) {
+        setBootstrapError(bootstrapFailure.message || 'Không thể khởi động ứng dụng.');
+      } finally {
+        setIsBootstrapping(false);
+      }
+    }
+    bootstrap();
   }, []);
 
   useEffect(() => {
-    loadHealth();
-    loadDashboard();
-  }, [loadDashboard, loadHealth]);
+    if (!isBootstrapping && !bootstrapError && !needsOnboarding && userId) {
+      loadDashboard();
+    }
+  }, [isBootstrapping, bootstrapError, needsOnboarding, userId, loadDashboard]);
 
   const handleSubmitExpense = async () => {
     const trimmedText = expenseText.trim();
@@ -106,7 +156,7 @@ export default function App() {
 
     try {
       await apiPost('/expenses/quick-input', {
-        userId: USER_ID,
+        userId,
         text: trimmedText,
       });
       setExpenseText('');
@@ -124,7 +174,7 @@ export default function App() {
 
     try {
       await apiPost(`/challenges/${challengeId}/complete`, {
-        userId: USER_ID,
+        userId,
       });
       await loadDashboard();
     } catch (challengeError) {
@@ -134,19 +184,62 @@ export default function App() {
     }
   };
 
-  const healthLabel = useMemo(() => {
-    if (healthStatus === 'connected') {
-      return 'Backend đã kết nối';
-    }
-
-    if (healthStatus === 'failed') {
-      return 'Backend lỗi';
-    }
-
-    return 'Đang kiểm tra backend...';
-  }, [healthStatus]);
-
   const screenTitle = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Trang chủ';
+
+  if (isBootstrapping) {
+    return (
+      <View style={[styles.app, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (bootstrapError) {
+    return (
+      <View style={styles.startupError}>
+        <Text style={styles.startupErrorTitle}>Chưa thể kết nối</Text>
+        <Text style={styles.startupErrorText}>{bootstrapError}</Text>
+        <Pressable onPress={() => {
+          setIsBootstrapping(true);
+          setBootstrapError('');
+          const retry = async () => {
+            try {
+              const storedUserId = await AsyncStorage.getItem('vmh_user_id');
+              if (!storedUserId) throw new Error('Chưa tạo được mã thiết bị.');
+              const response = await apiGet(`/profile/${storedUserId}`);
+              const nextProfile = profileFromResponse(response);
+              setUserId(storedUserId);
+              setProfile(nextProfile);
+              setNeedsOnboarding(!isCompleteProfile(nextProfile));
+            } catch (retryError) {
+              if (retryError.status === 404) {
+                setNeedsOnboarding(true);
+              } else {
+                setBootstrapError(retryError.message || 'Không thể kết nối máy chủ.');
+              }
+            } finally {
+              setIsBootstrapping(false);
+            }
+          };
+          retry();
+        }} style={styles.retryButton}><Text style={styles.retryButtonText}>Thử lại</Text></Pressable>
+      </View>
+    );
+  }
+
+  if (needsOnboarding) {
+    return (
+      <OnboardingScreen
+        userId={userId}
+        initialProfile={profile}
+        onFinish={(nextProfile) => {
+          setProfile(nextProfile);
+          setNeedsOnboarding(false);
+          setActiveTab('home');
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.app}>
@@ -155,11 +248,6 @@ export default function App() {
         <View style={styles.header}>
           <View style={styles.headerTopRow}>
             <Text style={styles.appTitle}>Ví Mỏ Hỗn</Text>
-            <View style={[styles.statusPill, styles[healthStatus]]}>
-              <Text style={[styles.statusText, styles[`${healthStatus}Text`]]}>
-                {healthLabel}
-              </Text>
-            </View>
           </View>
           <Text style={styles.subtitle}>{screenTitle}</Text>
         </View>
@@ -198,24 +286,13 @@ export default function App() {
         ) : null}
 
         {activeTab === 'coach' ? (
-          <CoachScreen dashboard={dashboard} userId={USER_ID} />
+          <CoachScreen dashboard={dashboard} userId={userId} />
         ) : null}
 
         {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}
         {activeTab === 'profile' ? (
-          <ProfileScreen dashboard={dashboard} onRefreshDashboard={loadDashboard} />
+          <ProfileScreen dashboard={dashboard} profile={profile} userId={userId} onRefreshDashboard={loadDashboard} />
         ) : null}
-
-        <Pressable
-          disabled={isLoading}
-          onPress={loadDashboard}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            (pressed || isLoading) && styles.secondaryButtonPressed,
-          ]}
-        >
-          <Text style={styles.secondaryButtonText}>Làm mới dashboard</Text>
-        </Pressable>
       </ScrollView>
 
       <BottomTabs activeTab={activeTab} onChangeTab={setActiveTab} />
@@ -255,54 +332,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  statusPill: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  checking: {
-    backgroundColor: colors.surfaceMist,
-  },
-  checkingText: {
-    color: colors.mossText,
-  },
-  connected: {
-    backgroundColor: colors.primaryContainer,
-  },
-  connectedText: {
-    color: colors.onPrimaryContainer,
-  },
-  failed: {
-    backgroundColor: colors.error,
-  },
-  failedText: {
-    color: colors.surfaceRice,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceRice,
-    borderColor: colors.softBorder,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    marginTop: 16,
-    minHeight: 48,
-    paddingHorizontal: 16,
-  },
-  secondaryButtonPressed: {
-    backgroundColor: colors.surfaceMist,
-    opacity: 0.75,
-  },
-  secondaryButtonText: {
-    color: colors.mossText,
-    fontSize: 15,
-    fontWeight: '700',
-  },
   errorBox: {
     backgroundColor: '#ffdad6',
     borderColor: '#ffb4ab',
@@ -326,6 +355,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  startupError: { alignItems: 'center', backgroundColor: colors.appCanvas, flex: 1, gap: 14, justifyContent: 'center', padding: 24 },
+  startupErrorTitle: { color: colors.primary, fontSize: 24, fontWeight: '800' },
+  startupErrorText: { color: colors.onSurfaceVariant, fontSize: 16, lineHeight: 24, textAlign: 'center' },
+  retryButton: { backgroundColor: colors.primary, borderRadius: 12, marginTop: 8, minWidth: 128, paddingHorizontal: 16, paddingVertical: 14 },
+  retryButtonText: { color: colors.surfaceRice, fontSize: 16, fontWeight: '800', textAlign: 'center' },
   tabBar: {
     backgroundColor: colors.surfaceRice,
     borderColor: colors.softBorder,
@@ -344,8 +378,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 52,
-    paddingHorizontal: 4,
+    height: 56,
+    paddingHorizontal: 2,
   },
   activeTabButton: {
     backgroundColor: colors.primaryContainer,
@@ -378,7 +412,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.mossText,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
   },

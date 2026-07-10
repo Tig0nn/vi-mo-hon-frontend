@@ -1,4 +1,5 @@
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+const REQUEST_TIMEOUT_MS = 10000;
 
 function buildUrl(path) {
   if (!API_BASE_URL) {
@@ -24,13 +25,19 @@ async function parseResponse(response) {
       data?.message ||
       data?.error ||
       `Request failed with status ${response.status}`;
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
 
   return data;
 }
 
 async function apiRequest(path, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   try {
     const response = await fetch(buildUrl(path), {
       headers: {
@@ -39,15 +46,26 @@ async function apiRequest(path, options = {}) {
         ...options.headers,
       },
       ...options,
+      signal: controller.signal,
     });
 
     return await parseResponse(response);
   } catch (error) {
+    if (error?.status) {
+      throw error;
+    }
+
+    if (error?.name === 'AbortError') {
+      throw new Error('Kết nối đến máy chủ quá lâu. Vui lòng thử lại.');
+    }
+
     if (error instanceof SyntaxError) {
       throw new Error('Backend returned an invalid JSON response');
     }
 
     throw new Error(error.message || 'Unable to reach backend');
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
