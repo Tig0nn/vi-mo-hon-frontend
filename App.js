@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { apiGet, apiPost } from './src/api/client';
 import { BossScreen } from './src/screens/BossScreen';
 import { CharacterScreen } from './src/screens/CharacterScreen';
+import { CoachScreen } from './src/screens/CoachScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { colors } from './src/theme/colors';
@@ -20,6 +21,7 @@ const USER_ID = 'mock-user';
 const TABS = [
   { key: 'home', label: 'Trang chủ', icon: 'TC' },
   { key: 'boss', label: 'Boss', icon: 'B' },
+  { key: 'coach', label: 'Coach', icon: 'C' },
   { key: 'character', label: 'Nhân vật', icon: 'NV' },
   { key: 'profile', label: 'Hồ sơ', icon: 'HS' },
 ];
@@ -193,6 +195,10 @@ export default function App() {
             completingChallengeId={completingChallengeId}
             onCompleteChallenge={handleCompleteChallenge}
           />
+        ) : null}
+
+        {activeTab === 'coach' ? (
+          <CoachScreen dashboard={dashboard} userId={USER_ID} />
         ) : null}
 
         {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}

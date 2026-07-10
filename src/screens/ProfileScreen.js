@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { DataRow } from '../components/DataRow';
 import { IconBadge } from '../components/IconBadge';
 import { colors } from '../theme/colors';
+import { safeTextInputStyles } from '../theme/inputStyles';
 import { formatValue } from '../utils/formatValue';
 import {
   cancelDailyExpenseReminder,
@@ -670,15 +671,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   input: {
+    ...safeTextInputStyles.singleLine,
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
     borderRadius: 12,
     borderWidth: 1,
     color: colors.onSurface,
-    fontSize: 16,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
   },
   toneGrid: {
     flexDirection: 'row',

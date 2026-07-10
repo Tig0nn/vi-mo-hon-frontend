@@ -4,6 +4,7 @@ import { IconBadge } from '../components/IconBadge';
 import { RecentExpenseList } from '../components/RecentExpenseList';
 import { StatCard } from '../components/StatCard';
 import { colors } from '../theme/colors';
+import { safeTextInputStyles } from '../theme/inputStyles';
 
 export function HomeScreen({
   dashboard,
@@ -60,14 +61,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   input: {
+    ...safeTextInputStyles.singleLine,
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
     borderRadius: 12,
     borderWidth: 1,
     color: colors.onSurface,
-    fontSize: 16,
-    minHeight: 56,
-    paddingHorizontal: 16,
   },
   primaryButton: {
     alignItems: 'center',
