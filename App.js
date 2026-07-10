@@ -196,7 +196,9 @@ export default function App() {
         ) : null}
 
         {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}
-        {activeTab === 'profile' ? <ProfileScreen dashboard={dashboard} /> : null}
+        {activeTab === 'profile' ? (
+          <ProfileScreen dashboard={dashboard} onRefreshDashboard={loadDashboard} />
+        ) : null}
 
         <Pressable
           disabled={isLoading}

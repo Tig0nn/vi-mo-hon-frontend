@@ -61,3 +61,10 @@ export function apiPost(path, body) {
     body: JSON.stringify(body),
   });
 }
+
+export function apiPatch(path, body) {
+  return apiRequest(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}

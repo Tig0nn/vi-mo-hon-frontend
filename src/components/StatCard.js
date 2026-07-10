@@ -28,9 +28,10 @@ const styles = StyleSheet.create({
     borderColor: colors.softBorder,
     borderRadius: 12,
     borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 88,
     padding: 12,
   },
   primaryCard: {
@@ -38,9 +39,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(58, 106, 0, 0.2)', // primary/20
   },
   contentRow: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     gap: 12,
+    minWidth: 0,
   },
   iconWrapper: {
     width: 40,
@@ -57,18 +59,27 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   textContainer: {
+    flex: 1,
     justifyContent: 'center',
+    minWidth: 0,
   },
   statLabel: {
     color: colors.onSurface,
-    fontSize: 16,
-    fontWeight: '600',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   statValue: {
     color: colors.onSurface,
-    fontSize: 24,
-    fontWeight: '700',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    fontSize: 20,
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
+    lineHeight: 26,
+    minWidth: 0,
   },
   primaryValue: {
     color: colors.primary,
