@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -73,6 +74,17 @@ function BottomTabs({ activeTab, onChangeTab }) {
 
 function profileFromResponse(response) {
   return response?.data?.profile ?? response?.profile ?? response?.data ?? response;
+}
+
+function AppHeader({ screenTitle }) {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerTopRow}>
+        <Text style={styles.appTitle}>Mỏ Hỗn</Text>
+      </View>
+      <Text style={styles.subtitle}>{screenTitle}</Text>
+    </View>
+  );
 }
 
 export default function App() {
@@ -244,56 +256,54 @@ export default function App() {
   return (
     <View style={styles.app}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <Text style={styles.appTitle}>Ví Mỏ Hỗn</Text>
-          </View>
-          <Text style={styles.subtitle}>{screenTitle}</Text>
-        </View>
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text selectable style={styles.errorText}>
-              {error}
-            </Text>
-          </View>
-        ) : null}
-
-        {isLoading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.mutedText}>Đang tải dashboard...</Text>
-          </View>
-        ) : null}
-
-        {activeTab === 'home' ? (
-          <HomeScreen
-            dashboard={dashboard}
-            expenseText={expenseText}
-            isLoading={isLoading}
-            onChangeExpenseText={setExpenseText}
-            onSubmitExpense={handleSubmitExpense}
-          />
-        ) : null}
-
-        {activeTab === 'boss' ? (
-          <BossScreen
-            dashboard={dashboard}
-            completingChallengeId={completingChallengeId}
-            onCompleteChallenge={handleCompleteChallenge}
-          />
-        ) : null}
-
-        {activeTab === 'coach' ? (
+      {activeTab === 'coach' ? (
+        <View style={styles.coachContent}>
+          <AppHeader screenTitle={screenTitle} />
           <CoachScreen dashboard={dashboard} userId={userId} />
-        ) : null}
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <AppHeader screenTitle={screenTitle} />
 
-        {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}
-        {activeTab === 'profile' ? (
-          <ProfileScreen dashboard={dashboard} profile={profile} userId={userId} onRefreshDashboard={loadDashboard} />
-        ) : null}
-      </ScrollView>
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text selectable style={styles.errorText}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
+          {isLoading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.mutedText}>Đang tải dashboard...</Text>
+            </View>
+          ) : null}
+
+          {activeTab === 'home' ? (
+            <HomeScreen
+              dashboard={dashboard}
+              expenseText={expenseText}
+              isLoading={isLoading}
+              onChangeExpenseText={setExpenseText}
+              onSubmitExpense={handleSubmitExpense}
+            />
+          ) : null}
+
+          {activeTab === 'boss' ? (
+            <BossScreen
+              dashboard={dashboard}
+              completingChallengeId={completingChallengeId}
+              onCompleteChallenge={handleCompleteChallenge}
+            />
+          ) : null}
+
+          {activeTab === 'character' ? <CharacterScreen dashboard={dashboard} /> : null}
+          {activeTab === 'profile' ? (
+            <ProfileScreen dashboard={dashboard} profile={profile} userId={userId} onRefreshDashboard={loadDashboard} />
+          ) : null}
+        </ScrollView>
+      )}
 
       <BottomTabs activeTab={activeTab} onChangeTab={setActiveTab} />
     </View>
@@ -304,11 +314,19 @@ const styles = StyleSheet.create({
   app: {
     backgroundColor: colors.appCanvas,
     flex: 1,
+    ...(Platform.OS === 'web' ? { height: '100vh' } : null),
   },
   content: {
     gap: 16,
     padding: 20,
     paddingBottom: 120,
+    paddingTop: 60,
+  },
+  coachContent: {
+    flex: 1,
+    gap: 16,
+    paddingBottom: 112,
+    paddingHorizontal: 20,
     paddingTop: 60,
   },
   header: {

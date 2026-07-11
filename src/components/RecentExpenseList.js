@@ -2,6 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
+const { formatExpenseCategory } = require('../utils/expenseCategory.cjs');
+
 export function RecentExpenseList({ expenses }) {
   if (!Array.isArray(expenses) || expenses.length === 0) {
     return (
@@ -19,8 +21,10 @@ export function RecentExpenseList({ expenses }) {
 
   return (
     <View style={styles.list}>
-      {expenses.map((expense, index) => (
-        <View key={expense?.id || expense?._id || index} style={styles.listItem}>
+      {expenses.map((expense, index) => {
+        const categoryLabel = formatExpenseCategory(expense?.category);
+
+        return <View key={expense?.id || expense?._id || index} style={styles.listItem}>
           <View style={styles.row}>
             <Text selectable style={styles.itemTitle}>
               {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
@@ -29,15 +33,15 @@ export function RecentExpenseList({ expenses }) {
               {formatValue(expense?.amount)}
             </Text>
           </View>
-          {expense?.category ? (
+          {categoryLabel ? (
             <View style={styles.categoryBadge}>
               <Text selectable style={styles.categoryText}>
-                {formatValue(expense.category)}
+                {categoryLabel}
               </Text>
             </View>
           ) : null}
-        </View>
-      ))}
+        </View>;
+      })}
     </View>
   );
 }

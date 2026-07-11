@@ -11,8 +11,11 @@ import {
   View,
 } from 'react-native';
 import { apiPost } from '../api/client';
+import { TargetDateField } from '../components/TargetDateField';
 import { colors } from '../theme/colors';
 import { formatVnd, GOAL_LABELS } from '../utils/profile';
+
+const { getTargetDateError } = require('../utils/date.cjs');
 
 const GOAL_OPTIONS = Object.entries(GOAL_LABELS)
   .filter(([value]) => value !== 'other')
@@ -56,11 +59,6 @@ export function OnboardingScreen({ userId, initialProfile, onFinish }) {
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const setMoneyField = (field, value) => setField(field, digitsOnly(value));
   const amountIsValid = (value) => /^\d+$/.test(value) && Number(value) > 0;
-  const dateIsValid = (value) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const date = new Date(`${value}T00:00:00`);
-    return !Number.isNaN(date.getTime()) && date.getTime() > new Date().setHours(0, 0, 0, 0);
-  };
 
   const validateStep = () => {
     if (step === 1) {
@@ -72,7 +70,8 @@ export function OnboardingScreen({ userId, initialProfile, onFinish }) {
         return 'Vui lòng chọn mục tiêu của bạn.';
       }
       if (!amountIsValid(form.targetAmount)) return 'Số tiền bạn muốn tiết kiệm phải là số nguyên lớn hơn 0.';
-      if (!dateIsValid(form.targetDate)) return 'Thời hạn hoàn thành phải là một ngày trong tương lai (YYYY-MM-DD).';
+      const targetDateError = getTargetDateError(form.targetDate);
+      if (targetDateError) return targetDateError;
       if (!amountIsValid(form.monthlyBudget)) return 'Giới hạn chi tiêu mỗi tháng phải là số nguyên lớn hơn 0.';
     }
     if (step === 3 && !form.triggers.length) return 'Hãy chọn ít nhất một lúc bạn dễ tiêu tiền.';
@@ -131,8 +130,14 @@ export function OnboardingScreen({ userId, initialProfile, onFinish }) {
         <Text style={styles.label}>Số tiền bạn muốn tiết kiệm</Text>
         <TextInput style={styles.input} value={form.targetAmount} onChangeText={(value) => setMoneyField('targetAmount', value)} keyboardType="numeric" placeholder="Ví dụ: 20000000" placeholderTextColor={colors.onSurfaceVariant} />
         {moneyPreview(form.targetAmount) ? <Text style={styles.preview}>{moneyPreview(form.targetAmount)}</Text> : null}
-        <Text style={styles.label}>Thời hạn hoàn thành</Text>
-        <TextInput style={styles.input} value={form.targetDate} onChangeText={(value) => setField('targetDate', value)} placeholder="YYYY-MM-DD" autoCapitalize="none" placeholderTextColor={colors.onSurfaceVariant} />
+        <TargetDateField
+          disabled={isSubmitting}
+          onChange={(value) => {
+            setField('targetDate', value);
+            setError('');
+          }}
+          value={form.targetDate}
+        />
         <Text style={styles.label}>Giới hạn chi tiêu mỗi tháng</Text>
         <TextInput style={styles.input} value={form.monthlyBudget} onChangeText={(value) => setMoneyField('monthlyBudget', value)} keyboardType="numeric" placeholder="Ví dụ: 10000000" placeholderTextColor={colors.onSurfaceVariant} />
         {moneyPreview(form.monthlyBudget) ? <Text style={styles.preview}>{moneyPreview(form.monthlyBudget)}</Text> : null}

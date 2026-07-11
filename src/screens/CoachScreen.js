@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -92,23 +94,27 @@ export function CoachScreen({ userId }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topArea}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>MH</Text>
-        </View>
-        <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>Bạn muốn biết gì về tài chính của mình?</Text>
-        </View>
-      </View>
-
+    <KeyboardAvoidingView
+      behavior={Platform.select({ android: 'height', ios: 'padding' })}
+      style={styles.container}
+    >
       <ScrollView
         ref={scrollViewRef}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.messageList}
-        nestedScrollEnabled
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
         showsVerticalScrollIndicator={false}
         style={styles.messageScroll}
       >
+        <View style={styles.topArea}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>MH</Text>
+          </View>
+          <View style={styles.speechBubble}>
+            <Text style={styles.speechText}>Bạn muốn biết gì về tài chính của mình?</Text>
+          </View>
+        </View>
+
         {messages.map((message) => {
           const isUser = message.role === 'user';
 
@@ -132,26 +138,27 @@ export function CoachScreen({ userId }) {
             <Text style={styles.loadingText}>Coach đang nghĩ...</Text>
           </View>
         ) : null}
-      </ScrollView>
 
-      <ScrollView
-        contentContainerStyle={styles.suggestionList}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {suggestedQuestions.map((question) => (
-          <Pressable
-            disabled={isSending}
-            key={question}
-            onPress={() => sendMessage(question)}
-            style={({ pressed }) => [
-              styles.suggestionChip,
-              (pressed || isSending) && styles.pressed,
-            ]}
-          >
-            <Text style={styles.suggestionText}>{question}</Text>
-          </Pressable>
-        ))}
+        <ScrollView
+          contentContainerStyle={styles.suggestionList}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+        >
+          {suggestedQuestions.map((question) => (
+            <Pressable
+              disabled={isSending}
+              key={question}
+              onPress={() => sendMessage(question)}
+              style={({ pressed }) => [
+                styles.suggestionChip,
+                (pressed || isSending) && styles.pressed,
+              ]}
+            >
+              <Text style={styles.suggestionText}>{question}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </ScrollView>
 
       {error ? (
@@ -185,13 +192,15 @@ export function CoachScreen({ userId }) {
           <Text style={styles.sendButtonText}>Gửi</Text>
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     gap: 14,
+    minHeight: 0,
   },
   topArea: {
     alignItems: 'center',
@@ -230,11 +239,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   messageScroll: {
-    maxHeight: 430,
+    flex: 1,
   },
   messageList: {
     gap: 10,
-    paddingVertical: 4,
+    paddingBottom: 12,
+    paddingTop: 4,
   },
   messageRow: {
     flexDirection: 'row',
@@ -285,6 +295,7 @@ const styles = StyleSheet.create({
   suggestionList: {
     gap: 8,
     paddingRight: 20,
+    paddingTop: 4,
   },
   suggestionChip: {
     backgroundColor: colors.onSurface,

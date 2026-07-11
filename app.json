@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Vimohon_app",
+    "name": "Mỏ Hỗn",
     "slug": "Vimohon_app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -26,7 +26,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ]
   }
 }
