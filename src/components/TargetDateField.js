@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Modal,
+  PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,98 +19,192 @@ const {
   tomorrow,
 } = require("../utils/date.cjs");
 
-const ITEM_HEIGHT = 44;
+const ITEM_HEIGHT = 48;
 const VISIBLE_ITEMS = 5;
+const EDGE_ITEMS = Math.floor(VISIBLE_ITEMS / 2);
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
 function range(start, end) {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
 function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
 
-function WheelColumn({ label, onSelect, selectedValue, values }) {
+function formatWheelValue(value, kind) {
+  if (kind === "year") return String(value);
+  return String(value).padStart(2, "0");
+}
+
+function WheelColumn({ kind, label, onSelect, selectedValue, values }) {
   const listRef = useRef(null);
+  const offsetRef = useRef(0);
+  const dragStartOffsetRef = useRef(0);
+  const settleTimerRef = useRef(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(() =>
+    Math.max(0, values.indexOf(selectedValue)),
+  );
 
-  const scrollToValue = (value, animated = true) => {
-    const index = values.indexOf(value);
-    if (index < 0) return;
+  const maximumOffset = Math.max(0, (values.length - 1) * ITEM_HEIGHT);
 
+  const indexFromOffset = (offsetY) =>
+    clamp(Math.round(offsetY / ITEM_HEIGHT), 0, values.length - 1);
+
+  const scrollToIndex = (index, animated) => {
+    const safeIndex = clamp(index, 0, values.length - 1);
+    const nextOffset = safeIndex * ITEM_HEIGHT;
+
+    offsetRef.current = nextOffset;
+    setHighlightedIndex(safeIndex);
     listRef.current?.scrollToOffset({
       animated,
-      offset: index * ITEM_HEIGHT,
+      offset: nextOffset,
     });
   };
 
-  const selectFromOffset = (offsetY) => {
-    const rawIndex = Math.round(offsetY / ITEM_HEIGHT);
-    const index = Math.max(0, Math.min(values.length - 1, rawIndex));
+  const settleAtOffset = (offsetY, animated = true) => {
+    const index = indexFromOffset(offsetY);
     const nextValue = values[index];
+
+    scrollToIndex(index, animated);
 
     if (nextValue !== selectedValue) {
       onSelect(nextValue);
     }
+  };
 
-    scrollToValue(nextValue);
+  const scheduleSettle = (offsetY) => {
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current);
+    }
+
+    settleTimerRef.current = setTimeout(() => {
+      settleAtOffset(offsetY);
+    }, 120);
   };
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      scrollToValue(selectedValue, false);
-    });
+    const index = Math.max(0, values.indexOf(selectedValue));
+    const timer = setTimeout(() => {
+      scrollToIndex(index, false);
+    }, 0);
 
-    return () => cancelAnimationFrame(frame);
+    return () => clearTimeout(timer);
   }, [selectedValue, values]);
+
+  useEffect(
+    () => () => {
+      if (settleTimerRef.current) {
+        clearTimeout(settleTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const webPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => Platform.OS === "web",
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          Platform.OS === "web" && Math.abs(gestureState.dy) > 3,
+        onPanResponderGrant: () => {
+          dragStartOffsetRef.current = offsetRef.current;
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const nextOffset = clamp(
+            dragStartOffsetRef.current - gestureState.dy,
+            0,
+            maximumOffset,
+          );
+
+          offsetRef.current = nextOffset;
+          setHighlightedIndex(indexFromOffset(nextOffset));
+          listRef.current?.scrollToOffset({
+            animated: false,
+            offset: nextOffset,
+          });
+        },
+        onPanResponderRelease: () => {
+          settleAtOffset(offsetRef.current);
+        },
+        onPanResponderTerminate: () => {
+          settleAtOffset(offsetRef.current);
+        },
+      }),
+    [maximumOffset, selectedValue, values],
+  );
 
   return (
     <View style={styles.wheelColumn}>
       <Text style={styles.wheelLabel}>{label}</Text>
-      <View style={styles.wheelViewport}>
+
+      <View
+        accessibilityLabel={`Chọn ${label.toLowerCase()}`}
+        accessibilityRole="adjustable"
+        style={styles.wheelViewport}
+        {...(Platform.OS === "web" ? webPanResponder.panHandlers : {})}
+      >
         <View pointerEvents="none" style={styles.selectionBand} />
+        <View pointerEvents="none" style={styles.selectionTopLine} />
+        <View pointerEvents="none" style={styles.selectionBottomLine} />
+
         <FlatList
           ref={listRef}
+          bounces={false}
           contentContainerStyle={styles.wheelContent}
           data={values}
           decelerationRate="fast"
+          disableIntervalMomentum
           getItemLayout={(_data, index) => ({
             index,
             length: ITEM_HEIGHT,
             offset: ITEM_HEIGHT * index,
           })}
           initialScrollIndex={Math.max(0, values.indexOf(selectedValue))}
-          keyExtractor={(item) => String(item)}
+          keyExtractor={(item) => `${kind}-${item}`}
+          nestedScrollEnabled
           onMomentumScrollEnd={(event) => {
-            selectFromOffset(event.nativeEvent.contentOffset.y);
+            settleAtOffset(event.nativeEvent.contentOffset.y);
+          }}
+          onScroll={(event) => {
+            const offsetY = clamp(
+              event.nativeEvent.contentOffset.y,
+              0,
+              maximumOffset,
+            );
+
+            offsetRef.current = offsetY;
+            setHighlightedIndex(indexFromOffset(offsetY));
+            scheduleSettle(offsetY);
           }}
           onScrollEndDrag={(event) => {
-            selectFromOffset(event.nativeEvent.contentOffset.y);
+            scheduleSettle(event.nativeEvent.contentOffset.y);
           }}
-          renderItem={({ item }) => {
-            const isSelected = item === selectedValue;
+          renderItem={({ index, item }) => {
+            const distance = Math.abs(index - highlightedIndex);
+            const isSelected = distance === 0;
 
             return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
-                onPress={() => {
-                  onSelect(item);
-                  scrollToValue(item);
-                }}
-                style={styles.wheelItem}
-              >
+              <View style={styles.wheelItem}>
                 <Text
                   style={[
                     styles.wheelItemText,
+                    distance === 1 && styles.wheelItemTextNear,
+                    distance >= 2 && styles.wheelItemTextFar,
                     isSelected && styles.wheelItemTextSelected,
                   ]}
                 >
-                  {String(item).padStart(2, "0")}
+                  {formatWheelValue(item, kind)}
                 </Text>
-              </Pressable>
+              </View>
             );
           }}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           snapToAlignment="start"
           snapToInterval={ITEM_HEIGHT}
@@ -227,8 +323,11 @@ export function TargetDateField({ disabled = false, onChange, value }) {
               {String(draftMonth).padStart(2, "0")}/{draftYear}
             </Text>
 
+            <Text style={styles.swipeHint}>Vuốt lên hoặc xuống để chọn</Text>
+
             <View style={styles.wheelsRow}>
               <WheelColumn
+                kind="day"
                 label="Ngày"
                 onSelect={(day) => {
                   setDraftDay(day);
@@ -238,12 +337,14 @@ export function TargetDateField({ disabled = false, onChange, value }) {
                 values={dayValues}
               />
               <WheelColumn
+                kind="month"
                 label="Tháng"
                 onSelect={updateMonth}
                 selectedValue={draftMonth}
                 values={monthValues}
               />
               <WheelColumn
+                kind="year"
                 label="Năm"
                 onSelect={updateYear}
                 selectedValue={draftYear}
@@ -358,10 +459,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: "center",
   },
+  swipeHint: {
+    color: colors.onSurfaceVariant,
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: "center",
+  },
   wheelsRow: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 18,
+    marginTop: 14,
   },
   wheelColumn: {
     flex: 1,
@@ -375,27 +482,43 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   wheelViewport: {
+    cursor: Platform.OS === "web" ? "grab" : undefined,
     height: WHEEL_HEIGHT,
     overflow: "hidden",
     position: "relative",
+    userSelect: Platform.OS === "web" ? "none" : undefined,
   },
   wheelList: {
     height: WHEEL_HEIGHT,
   },
   wheelContent: {
-    paddingBottom: ITEM_HEIGHT * 2,
-    paddingTop: ITEM_HEIGHT * 2,
+    paddingBottom: ITEM_HEIGHT * EDGE_ITEMS,
+    paddingTop: ITEM_HEIGHT * EDGE_ITEMS,
   },
   selectionBand: {
-    backgroundColor: colors.primaryContainer,
-    borderColor: colors.primary,
+    backgroundColor: "rgba(110, 166, 56, 0.16)",
     borderRadius: 10,
-    borderWidth: 1,
     height: ITEM_HEIGHT,
-    left: 0,
+    left: 2,
     position: "absolute",
-    right: 0,
-    top: ITEM_HEIGHT * 2,
+    right: 2,
+    top: ITEM_HEIGHT * EDGE_ITEMS,
+  },
+  selectionTopLine: {
+    backgroundColor: colors.primaryContainer,
+    height: 1,
+    left: 5,
+    position: "absolute",
+    right: 5,
+    top: ITEM_HEIGHT * EDGE_ITEMS,
+  },
+  selectionBottomLine: {
+    backgroundColor: colors.primaryContainer,
+    height: 1,
+    left: 5,
+    position: "absolute",
+    right: 5,
+    top: ITEM_HEIGHT * (EDGE_ITEMS + 1),
   },
   wheelItem: {
     alignItems: "center",
@@ -405,11 +528,20 @@ const styles = StyleSheet.create({
   wheelItemText: {
     color: colors.onSurfaceVariant,
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: "500",
+    opacity: 0.75,
+  },
+  wheelItemTextNear: {
+    opacity: 0.9,
+  },
+  wheelItemTextFar: {
+    opacity: 0.4,
   },
   wheelItemTextSelected: {
-    color: colors.onPrimaryContainer,
+    color: colors.primary,
+    fontSize: 19,
     fontWeight: "900",
+    opacity: 1,
   },
   errorText: {
     color: colors.error,
