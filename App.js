@@ -15,6 +15,7 @@ import { BossScreen } from './src/screens/BossScreen';
 import { CharacterScreen } from './src/screens/CharacterScreen';
 import { CoachScreen } from './src/screens/CoachScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { LessonScreen } from './src/screens/LessonScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { colors } from './src/theme/colors';
@@ -98,6 +99,8 @@ export default function App() {
   const [isExpenseCategoryManual, setIsExpenseCategoryManual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [completingChallengeId, setCompletingChallengeId] = useState(null);
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [lessonRefreshKey, setLessonRefreshKey] = useState(0);
   const [error, setError] = useState('');
 
   const loadDashboard = useCallback(async () => {
@@ -220,6 +223,12 @@ export default function App() {
 
   const screenTitle = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Trang chủ';
 
+  const handleExitLesson = () => {
+    setSelectedLesson(null);
+    setActiveTab('boss');
+    setLessonRefreshKey((value) => value + 1);
+  };
+
   if (isBootstrapping) {
     return (
       <View style={[styles.app, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -275,6 +284,20 @@ export default function App() {
     );
   }
 
+  if (selectedLesson) {
+    return (
+      <View style={styles.app}>
+        <StatusBar style="dark" />
+        <LessonScreen
+          lesson={selectedLesson}
+          userId={userId}
+          onBack={handleExitLesson}
+          onRefreshDashboard={loadDashboard}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.app}>
       <StatusBar style="dark" />
@@ -319,8 +342,11 @@ export default function App() {
           {activeTab === 'boss' ? (
             <BossScreen
               dashboard={dashboard}
+              userId={userId}
               completingChallengeId={completingChallengeId}
               onCompleteChallenge={handleCompleteChallenge}
+              onSelectLesson={setSelectedLesson}
+              lessonRefreshKey={lessonRefreshKey}
             />
           ) : null}
 

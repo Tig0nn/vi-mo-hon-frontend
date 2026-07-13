@@ -60,6 +60,13 @@ export function CharacterScreen({ dashboard }) {
   const totalChallenges = Number(boss.totalChallenges || 0);
   const chapterPercent = totalChallenges > 0 ? (completedChallenges / totalChallenges) * 100 : 0;
   const bossHpPercent = boss.maxHp > 0 ? (Number(boss.currentHp || 0) / Number(boss.maxHp)) * 100 : 0;
+  const discipline = Number(profile.discipline || 0);
+  const savings = Number(profile.savings || 0);
+  const knowledge = Number(profile.knowledge || 0);
+  const providedWealth = Number(profile.wealth);
+  const wealth = Number.isFinite(providedWealth)
+    ? providedWealth
+    : discipline + savings + knowledge;
 
   const badges = [
     {
@@ -172,6 +179,9 @@ export function CharacterScreen({ dashboard }) {
         <DataRow label="XP" value={profile.xp} />
         <DataRow label="Cấp độ" value={profile.level} />
         <DataRow label="Kỷ luật" value={profile.discipline} />
+        <DataRow label="Tiết kiệm" value={savings} />
+        <DataRow label="Kiến thức" value={knowledge} />
+        <DataRow label="Tổng phát triển" value={wealth} />
       </Card>
     </View>
   );

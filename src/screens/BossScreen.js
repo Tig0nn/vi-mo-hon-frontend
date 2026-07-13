@@ -3,14 +3,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { BossProgress } from '../components/BossProgress';
 import { Card } from '../components/Card';
 import { ChallengeList } from '../components/ChallengeList';
+import { LessonList } from '../components/LessonList';
 import { colors } from '../theme/colors';
 
 const { buildBossChallengeList } = require('../utils/bossChallenges.cjs');
 
 export function BossScreen({
   dashboard,
+  userId,
   completingChallengeId,
   onCompleteChallenge,
+  onSelectLesson,
+  lessonRefreshKey,
 }) {
   const data = dashboard?.data ?? dashboard ?? {};
   const challenges = buildBossChallengeList(data);
@@ -22,6 +26,21 @@ export function BossScreen({
         icon={<Ionicons name="skull-outline" size={22} color={colors.primary} />}
       >
         <BossProgress boss={data.boss ?? {}} />
+      </Card>
+
+      <Card
+        title="Bài học 1 phút"
+        icon={<Ionicons name="book-outline" size={22} color={colors.primary} />}
+      >
+        <Text style={styles.helperText}>
+          Hiểu chiêu của Boss trước khi làm thử thách.
+        </Text>
+        <LessonList
+          userId={userId}
+          bossId={data.boss?.bossId}
+          onSelectLesson={onSelectLesson}
+          refreshKey={lessonRefreshKey}
+        />
       </Card>
 
       <Card
