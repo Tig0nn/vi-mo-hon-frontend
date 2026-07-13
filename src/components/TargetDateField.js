@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { safeTextInputStyles } from "../theme/inputStyles";
 
@@ -296,9 +297,7 @@ export function TargetDateField({ disabled = false, onChange, value }) {
         <Text style={[styles.dateText, !displayValue && styles.placeholder]}>
           {displayValue || "DD/MM/YYYY"}
         </Text>
-        <Text accessibilityElementsHidden style={styles.calendarIcon}>
-          LỊCH
-        </Text>
+        <Ionicons name="calendar-outline" size={20} color={colors.primary} />
       </Pressable>
 
       <Text style={styles.helperText}>Chạm để chọn ngày, tháng và năm.</Text>
@@ -415,11 +414,6 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     fontWeight: "400",
   },
-  calendarIcon: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: "900",
-  },
   helperText: {
     color: colors.onSurfaceVariant,
     fontSize: 13,
@@ -496,7 +490,7 @@ const styles = StyleSheet.create({
     paddingTop: ITEM_HEIGHT * EDGE_ITEMS,
   },
   selectionBand: {
-    backgroundColor: "rgba(110, 166, 56, 0.16)",
+    backgroundColor: colors.surfaceMist,
     borderRadius: 10,
     height: ITEM_HEIGHT,
     left: 2,

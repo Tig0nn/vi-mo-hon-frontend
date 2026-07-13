@@ -1,22 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { apiPatch } from '../api/client';
 import { Card } from '../components/Card';
 import { DataRow } from '../components/DataRow';
-import { IconBadge } from '../components/IconBadge';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
 import { formatTargetDate, formatVnd, GOAL_LABELS } from '../utils/profile';
-import {
-  cancelDailyExpenseReminder,
-  formatReminderTime,
-  getScheduledReminders,
-  requestNotificationPermission,
-  scheduleDailyExpenseReminder,
-  scheduleTestExpenseReminder,
-} from '../utils/notifications';
-
-const DEFAULT_REMINDER_TIME = { hour: 20, minute: 30 };
 
 function profileValue(profile, primaryKey, fallbackKey = null) {
   return profile?.[primaryKey] ?? (fallbackKey ? profile?.[fallbackKey] : undefined);
@@ -49,25 +39,39 @@ function parseMonthlyBudget(value) {
   return Number.isFinite(monthlyBudget) && monthlyBudget > 0 ? monthlyBudget : null;
 }
 
-function parseReminderTimeInput(value) {
-  const match = value.trim().match(/^(\d{2}):(\d{2})$/);
 
-  if (!match) {
-    return null;
-  }
+function SectionHeader({ icon, title, hint, gold = false }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionCopy}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+      </View>
+      <Ionicons name={icon} size={22} color={gold ? colors.goldAccent : colors.primary} />
+    </View>
+  );
+}
 
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    return null;
-  }
-
-  return { hour, minute };
+function MiniBadge({ icon, label, earned }) {
+  return (
+    <View style={[styles.miniBadge, !earned && styles.miniBadgeLocked]}>
+      <View style={[styles.miniBadgeIcon, earned ? styles.miniBadgeIconEarned : styles.miniBadgeIconLocked]}>
+        <Ionicons
+          name={earned ? icon : 'lock-closed'}
+          size={18}
+          color={earned ? colors.surfaceRice : colors.onSurfaceVariant}
+        />
+      </View>
+      <Text style={[styles.miniBadgeText, !earned && styles.miniBadgeTextLocked]}>{label}</Text>
+    </View>
+  );
 }
 
 export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefreshDashboard }) {
-  const dashboardProfile = (dashboard?.data ?? dashboard)?.profile;
+  const dashboardData = dashboard?.data ?? dashboard ?? {};
+  const dashboardProfile = dashboardData?.profile;
+  const recentExpenses = Array.isArray(dashboardData.recentExpenses) ? dashboardData.recentExpenses : [];
+  const boss = dashboardData.boss ?? {};
   const profile = useMemo(
     () => ({ ...(dashboardProfile || {}), ...(savedProfile || {}) }),
     [dashboardProfile, savedProfile]
@@ -78,32 +82,13 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [notificationError, setNotificationError] = useState('');
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [isReminderLoading, setIsReminderLoading] = useState(false);
-  const [isReminderTimeEditing, setIsReminderTimeEditing] = useState(false);
-  const [reminderTimeText, setReminderTimeText] = useState(formatReminderTime(DEFAULT_REMINDER_TIME));
-  const [reminderTimeError, setReminderTimeError] = useState('');
-  const [dailyReminder, setDailyReminder] = useState({
-    enabled: false,
-    time: DEFAULT_REMINDER_TIME,
-  });
 
-  const refreshReminderState = useCallback(async () => {
-    try {
-      const reminders = await getScheduledReminders();
-      const activeReminder = reminders[0];
+  const completedChallenges = Number(boss.completedChallenges || 0);
+  const totalChallenges = Number(boss.totalChallenges || 0);
+  const chapterPercent = totalChallenges > 0
+    ? Math.max(0, Math.min(100, (completedChallenges / totalChallenges) * 100))
+    : 0;
 
-      setDailyReminder({
-        enabled: Boolean(activeReminder),
-        time: activeReminder?.time || DEFAULT_REMINDER_TIME,
-      });
-      setReminderTimeText(formatReminderTime(activeReminder?.time || DEFAULT_REMINDER_TIME));
-      setNotificationError('');
-    } catch (error) {
-      setNotificationError('Chưa đọc được lịch nhắc. Thử lại sau nhé.');
-    }
-  }, []);
 
   useEffect(() => {
     if (!isEditing) {
@@ -111,15 +96,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     }
   }, [currentFormState, isEditing]);
 
-  useEffect(() => {
-    if (!isReminderTimeEditing) {
-      setReminderTimeText(formatReminderTime(dailyReminder.time));
-    }
-  }, [dailyReminder.time, isReminderTimeEditing]);
-
-  useEffect(() => {
-    refreshReminderState();
-  }, [refreshReminderState]);
 
   const updateFormField = (field, value) => {
     setForm((currentForm) => ({
@@ -132,10 +108,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     setForm(currentFormState);
     setFormError('');
     setSuccessMessage('');
-    setNotificationError('');
-    setNotificationMessage('');
-    setIsReminderTimeEditing(false);
-    setReminderTimeError('');
     setIsEditing(true);
   };
 
@@ -148,6 +120,7 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
   const handleSave = async () => {
     const displayName = form.displayName.trim();
     const monthlyBudget = parseMonthlyBudget(form.monthlyBudget);
+
     if (!displayName) {
       setFormError('Tên hiển thị không được để trống.');
       return;
@@ -171,7 +144,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     try {
       await apiPatch(`/profile/${userId}`, payload);
       setSuccessMessage('Đã lưu hồ sơ thành công.');
-
       await onRefreshDashboard?.();
       setIsEditing(false);
     } catch (saveError) {
@@ -181,123 +153,12 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     }
   };
 
-  const handleEnableReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      const permission = await requestNotificationPermission();
-
-      if (!permission.granted) {
-        setNotificationError('Bạn cần cho phép thông báo để bật nhắc nhở hằng ngày.');
-        return;
-      }
-
-      await scheduleDailyExpenseReminder(dailyReminder.time || DEFAULT_REMINDER_TIME);
-      await refreshReminderState();
-      setNotificationMessage(
-        `Đã bật nhắc nhở hằng ngày lúc ${formatReminderTime(
-          dailyReminder.time || DEFAULT_REMINDER_TIME
-        )}.`
-      );
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa bật được nhắc nhở. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleDisableReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      await cancelDailyExpenseReminder();
-      await refreshReminderState();
-      setNotificationMessage('Đã tắt nhắc nhở hằng ngày.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa tắt được nhắc nhở. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleStartReminderTimeEditing = () => {
-    setReminderTimeText(formatReminderTime(dailyReminder.time));
-    setReminderTimeError('');
-    setNotificationError('');
-    setNotificationMessage('');
-    setIsReminderTimeEditing(true);
-  };
-
-  const handleCancelReminderTimeEditing = () => {
-    setReminderTimeText(formatReminderTime(dailyReminder.time));
-    setReminderTimeError('');
-    setIsReminderTimeEditing(false);
-  };
-
-  const handleSaveReminderTime = async () => {
-    const nextReminderTime = parseReminderTimeInput(reminderTimeText);
-
-    if (!nextReminderTime) {
-      setReminderTimeError('Giờ nhắc không hợp lệ. Hãy nhập dạng HH:mm, ví dụ 20:30.');
-      return;
-    }
-
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-    setReminderTimeError('');
-
-    try {
-      setDailyReminder((currentReminder) => ({
-        ...currentReminder,
-        time: nextReminderTime,
-      }));
-
-      if (dailyReminder.enabled) {
-        await scheduleDailyExpenseReminder(nextReminderTime);
-        await refreshReminderState();
-      }
-
-      setReminderTimeText(formatReminderTime(nextReminderTime));
-      setIsReminderTimeEditing(false);
-      setNotificationMessage('Đã cập nhật giờ nhắc.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa đổi được giờ nhắc. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleSendTestReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      const permission = await requestNotificationPermission();
-
-      if (!permission.granted) {
-        setNotificationError('Bạn cần cho phép thông báo để gửi thử nhắc nhở.');
-        return;
-      }
-
-      await scheduleTestExpenseReminder();
-      setNotificationMessage('Đã hẹn thông báo thử sau 5 giây.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa gửi thử được thông báo. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
   if (isEditing) {
     return (
       <View style={styles.editContainer}>
-        <Card title="Chỉnh sửa hồ sơ" icon={<IconBadge label="✎" variant="warm" />}>
+        <Card>
+          <SectionHeader icon="create" title="Chỉnh sửa hồ sơ" hint="Tên hiển thị và ngân sách tháng" />
+
           {formError ? (
             <View style={styles.errorBox}>
               <Text selectable style={styles.errorText}>
@@ -365,7 +226,8 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
 
   return (
     <View style={styles.container}>
-      <Card title="Kế hoạch tiền bạc" icon={<IconBadge label="₫" />}>
+      <Card>
+        <SectionHeader icon="wallet" title="Kế hoạch tiền bạc" hint="Thông tin profile từ backend" />
         <DataRow
           label="Mục tiêu"
           value={GOAL_LABELS[profile.mainGoal] || 'Chưa thiết lập mục tiêu'}
@@ -376,129 +238,25 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
         <DataRow label="Đã chi tháng này" value={formatVnd(profile.monthlySpent)} />
       </Card>
 
-      <Card title="Nhắc nhở hằng ngày" icon={<IconBadge label="NR" variant="warm" />}>
-        <DataRow label="Trạng thái" value={dailyReminder.enabled ? 'Đang bật' : 'Đang tắt'} />
-        <DataRow label="Giờ nhắc" value={formatReminderTime(dailyReminder.time)} />
+      <Card>
+        <SectionHeader icon="ribbon" title="Thành tựu & tiến độ" hint="Dựa trên dashboard hiện có" gold />
 
-        {isReminderTimeEditing ? (
-          <View style={styles.timeEditor}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Nhập giờ nhắc</Text>
-              <TextInput
-                editable={!isReminderLoading}
-                keyboardType="numbers-and-punctuation"
-                onChangeText={(value) => {
-                  setReminderTimeText(value);
-                  setReminderTimeError('');
-                }}
-                placeholder="VD: 20:30"
-                placeholderTextColor={colors.onSurfaceVariant}
-                style={styles.input}
-                value={reminderTimeText}
-              />
-            </View>
-
-            {reminderTimeError ? (
-              <Text selectable style={styles.inlineErrorText}>
-                {reminderTimeError}
-              </Text>
-            ) : null}
-
-            <View style={styles.actionRow}>
-              <Pressable
-                disabled={isReminderLoading}
-                onPress={handleSaveReminderTime}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  styles.actionButton,
-                  (pressed || isReminderLoading) && styles.buttonPressed,
-                  isReminderLoading && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>Lưu giờ nhắc</Text>
-              </Pressable>
-
-              <Pressable
-                disabled={isReminderLoading}
-                onPress={handleCancelReminderTimeEditing}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  styles.actionButton,
-                  (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-                  isReminderLoading && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>Hủy</Text>
-              </Pressable>
-            </View>
+        <View style={styles.chapterProgress}>
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLabel}>Chapter hiện tại</Text>
+            <Text style={styles.progressValue}>{completedChallenges}/{totalChallenges || 0}</Text>
           </View>
-        ) : (
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleStartReminderTimeEditing}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Đổi giờ nhắc</Text>
-          </Pressable>
-        )}
-
-        {notificationError ? (
-          <View style={styles.errorBox}>
-            <Text selectable style={styles.errorText}>
-              {notificationError}
-            </Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${chapterPercent}%` }]} />
           </View>
-        ) : null}
-
-        {notificationMessage ? (
-          <View style={styles.successBox}>
-            <Text style={styles.successText}>{notificationMessage}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.actionRow}>
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleEnableReminder}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              styles.actionButton,
-              (pressed || isReminderLoading) && styles.buttonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>Bật nhắc nhở</Text>
-          </Pressable>
-
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleDisableReminder}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              styles.actionButton,
-              (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Tắt nhắc nhở</Text>
-          </Pressable>
         </View>
 
-        <Pressable
-          disabled={isReminderLoading}
-          onPress={handleSendTestReminder}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-            isReminderLoading && styles.buttonDisabled,
-          ]}
-        >
-          <Text style={styles.secondaryButtonText}>Gửi thử sau 5 giây</Text>
-        </Pressable>
+        <View style={styles.miniBadgeGrid}>
+          <MiniBadge icon="receipt" label="Ghi chép" earned={recentExpenses.length > 0} />
+          <MiniBadge icon="shield-checkmark" label="Kỷ luật" earned={Number(profile.discipline || 0) >= 10} />
+          <MiniBadge icon="trophy" label="Challenge" earned={completedChallenges > 0} />
+          <MiniBadge icon="star" label="Lên cấp" earned={Number(profile.level || 1) > 1} />
+        </View>
       </Card>
 
       <Pressable
@@ -529,26 +287,47 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingBottom: 48,
   },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  sectionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionTitle: {
+    color: colors.onSurface,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  sectionHint: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   field: {
     gap: 8,
   },
   label: {
     color: colors.mossText,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   input: {
     ...safeTextInputStyles.singleLine,
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     color: colors.onSurface,
   },
   timeEditor: {
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 12,
     padding: 12,
@@ -565,7 +344,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 999,
     justifyContent: 'center',
     minHeight: 48,
     paddingHorizontal: 16,
@@ -573,13 +352,13 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.surfaceRice,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   secondaryButton: {
     alignItems: 'center',
     backgroundColor: colors.surfaceRice,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 48,
@@ -590,9 +369,9 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   secondaryButtonText: {
-    color: colors.mossText,
+    color: colors.primary,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   buttonPressed: {
     opacity: 0.8,
@@ -604,7 +383,7 @@ const styles = StyleSheet.create({
   errorBox: {
     backgroundColor: '#ffdad6',
     borderColor: '#ffb4ab',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
@@ -616,20 +395,97 @@ const styles = StyleSheet.create({
   inlineErrorText: {
     color: colors.error,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 18,
   },
   successBox: {
-    backgroundColor: '#DFF3D2',
+    backgroundColor: colors.surfaceMist,
     borderColor: colors.primaryFixedDim,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
   successText: {
     color: colors.onPrimaryContainer,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 20,
+  },
+  chapterProgress: {
+    backgroundColor: colors.surfaceMist,
+    borderRadius: 16,
+    gap: 8,
+    padding: 12,
+  },
+  progressRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    color: colors.onSurface,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  progressValue: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '900',
+  },
+  progressTrack: {
+    backgroundColor: colors.primaryFixedDim,
+    borderRadius: 999,
+    height: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    height: '100%',
+  },
+  miniBadgeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  miniBadge: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderColor: colors.softBorder,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: 8,
+    minWidth: 134,
+    padding: 10,
+  },
+  miniBadgeLocked: {
+    opacity: 0.68,
+  },
+  miniBadgeIcon: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  miniBadgeIconEarned: {
+    backgroundColor: colors.goldAccent,
+  },
+  miniBadgeIconLocked: {
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.softBorder,
+    borderWidth: 1,
+  },
+  miniBadgeText: {
+    color: colors.onSurface,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  miniBadgeTextLocked: {
+    color: colors.onSurfaceVariant,
   },
 });

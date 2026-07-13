@@ -1,7 +1,7 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme/colors';
+import { Image, StyleSheet, Text, View } from "react-native";
+import { colors } from "../theme/colors";
 
-const bossImage = require('../../assets/images/boss-tra-sua-cropped.png');
+const bossImage = require("../../assets/images/boss-tra-sua-cropped.png");
 
 function ProgressBar({ percent, color }) {
   const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
@@ -26,19 +26,24 @@ export function BossProgress({ boss }) {
   const maxHp = Number(boss?.maxHp ?? boss?.totalHp ?? 0);
   const completedChallenges = Number(boss?.completedChallenges || 0);
   const totalChallenges = Number(boss?.totalChallenges || 0);
-  const isDefeated = boss?.status === 'defeated' || (maxHp > 0 && currentHp === 0);
+  const isDefeated =
+    boss?.status === "defeated" || (maxHp > 0 && currentHp === 0);
 
-  const hpRemainingPercent = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 0;
-  const defeatProgressPercent = maxHp > 0 ? Math.round(((maxHp - currentHp) / maxHp) * 100) : 0;
+  const hpRemainingPercent =
+    maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 0;
+  const defeatProgressPercent =
+    maxHp > 0 ? Math.round(((maxHp - currentHp) / maxHp) * 100) : 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.nameBox}>
         <View style={styles.nameContent}>
-          <Text style={styles.nameLabel}>{isDefeated ? 'Đã đánh bại' : 'Boss hiện tại'}</Text>
+          <Text style={styles.nameLabel}>
+            {isDefeated ? "Đã đánh bại" : "Boss hiện tại"}
+          </Text>
 
           <Text selectable style={styles.nameValue}>
-            {boss?.name || 'Chưa có dữ liệu'}
+            {boss?.name || "Chưa có dữ liệu"}
           </Text>
 
           {totalChallenges > 0 ? (
@@ -48,7 +53,11 @@ export function BossProgress({ boss }) {
           ) : null}
         </View>
 
-        <Image source={bossImage} style={styles.bossImage} resizeMode="contain" />
+        <Image
+          source={bossImage}
+          style={styles.bossImage}
+          resizeMode="contain"
+        />
       </View>
 
       <View style={styles.statGroup}>
@@ -56,14 +65,19 @@ export function BossProgress({ boss }) {
           <Text style={styles.label}>Boss HP</Text>
 
           <Text style={styles.value}>
-            <Text style={[styles.highlight, isDefeated && styles.defeatedHighlight]}>
+            <Text
+              style={[styles.highlight, isDefeated && styles.defeatedHighlight]}
+            >
               {Math.max(0, currentHp)}
-            </Text>{' '}
+            </Text>{" "}
             / {maxHp}
           </Text>
         </View>
 
-        <ProgressBar percent={isDefeated ? 0 : hpRemainingPercent} color={colors.error} />
+        <ProgressBar
+          percent={isDefeated ? 0 : hpRemainingPercent}
+          color={colors.error}
+        />
       </View>
 
       <View style={styles.statGroup}>
@@ -83,13 +97,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   nameBox: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
     borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     minHeight: 120,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -102,18 +114,18 @@ const styles = StyleSheet.create({
   nameLabel: {
     color: colors.mossText,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   nameValue: {
     color: colors.onSurface,
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   challengeProgressText: {
     color: colors.onSurfaceVariant,
     fontSize: 12,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
+    fontVariant: ["tabular-nums"],
+    fontWeight: "600",
     lineHeight: 17,
   },
   bossImage: {
@@ -125,24 +137,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   labelRow: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "flex-end",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   label: {
     color: colors.onSurfaceVariant,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   value: {
     color: colors.onSurface,
     fontSize: 14,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '600',
+    fontVariant: ["tabular-nums"],
+    fontWeight: "600",
   },
   highlight: {
     color: colors.error,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   defeatedHighlight: {
     color: colors.primary,
@@ -153,11 +165,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     height: 12,
-    overflow: 'hidden',
-    width: '100%',
+    overflow: "hidden",
+    width: "100%",
   },
   progressFill: {
     borderRadius: 999,
-    height: '100%',
+    height: "100%",
   },
 });
