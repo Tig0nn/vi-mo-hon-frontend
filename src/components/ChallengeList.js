@@ -3,16 +3,39 @@ import { IconBadge } from './IconBadge';
 import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
-export function ChallengeList({ challenges, completingChallengeId, onCompleteChallenge }) {
+const { formatIsoDateForDisplay } = require('../utils/date.cjs');
+
+function formatNextDate(value) {
+  if (!value) return '';
+  const dateOnly = typeof value === 'string' ? value.slice(0, 10) : '';
+  return formatIsoDateForDisplay(dateOnly) || String(value);
+}
+
+export function ChallengeList({
+  challenges,
+  completingChallengeId,
+  onCompleteChallenge,
+  challengeMessage,
+  nextChallengeAvailableOn,
+  bossStatus,
+}) {
   if (!Array.isArray(challenges) || challenges.length === 0) {
+    const nextDate = formatNextDate(nextChallengeAvailableOn);
+    const title =
+      bossStatus === 'defeated'
+        ? 'Boss đã bị đánh bại'
+        : challengeMessage || 'Hôm nay chưa có nhiệm vụ mới';
+
     return (
       <View style={styles.emptyState}>
         <View style={styles.emptyIconWrapper}>
           <Text style={styles.emptyIconText}>OK</Text>
         </View>
-        <Text style={styles.emptyTitle}>Chưa có nhiệm vụ</Text>
+        <Text style={styles.emptyTitle}>{title}</Text>
         <Text style={styles.emptyDescription}>
-          Hiện tại chưa có nhiệm vụ đang mở. Hãy làm mới dashboard sau khi backend tạo thử thách mới.
+          {nextDate
+            ? `Nhiệm vụ tiếp theo sẽ mở vào ${nextDate}.`
+            : 'Hoàn thành từng nhiệm vụ nhỏ và quay lại dashboard để theo dõi tiến độ.'}
         </Text>
       </View>
     );
@@ -24,15 +47,24 @@ export function ChallengeList({ challenges, completingChallengeId, onCompleteCha
         const challengeId = challenge?.id || challenge?._id;
         const title = challenge?.title || challenge?.name || `Nhiệm vụ ${index + 1}`;
         const isCompleting = completingChallengeId === challengeId;
+        const currentOrder = Number(challenge?.sequenceOrder || 0);
+        const totalChallenges = Number(challenge?.totalChallenges || 0);
 
         return (
           <View key={challengeId || title} style={styles.listItem}>
             <View style={styles.header}>
               <IconBadge label="!" variant="warm" />
               <View style={styles.titleContainer}>
-                <Text selectable style={styles.itemTitle}>
-                  {title}
-                </Text>
+                <View style={styles.titleRow}>
+                  <Text selectable style={styles.itemTitle}>
+                    {title}
+                  </Text>
+                  {currentOrder > 0 && totalChallenges > 0 ? (
+                    <Text style={styles.sequenceText}>
+                      {currentOrder}/{totalChallenges}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text selectable style={styles.itemDescription}>
                   {formatValue(challenge?.description)}
                 </Text>
@@ -44,7 +76,7 @@ export function ChallengeList({ challenges, completingChallengeId, onCompleteCha
                 <Text style={styles.rewardText}>+{challenge?.rewardXp || 0} XP</Text>
               </View>
               <View style={styles.rewardItem}>
-                <Text style={styles.rewardText}>{challenge?.bossDamage || 0} sát thương</Text>
+                <Text style={styles.rewardText}>Boss -{challenge?.bossDamage || 0} HP</Text>
               </View>
             </View>
 
@@ -59,7 +91,7 @@ export function ChallengeList({ challenges, completingChallengeId, onCompleteCha
               {isCompleting ? (
                 <ActivityIndicator color={colors.surfaceRice} />
               ) : (
-                <Text style={styles.primaryButtonText}>Hoàn thành</Text>
+                <Text style={styles.primaryButtonText}>Hoàn thành hôm nay</Text>
               )}
             </Pressable>
           </View>
@@ -94,11 +126,13 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     fontSize: 16,
     fontWeight: '700',
+    textAlign: 'center',
   },
   emptyDescription: {
     color: colors.onSurfaceVariant,
     fontSize: 14,
     lineHeight: 20,
+    maxWidth: 300,
     textAlign: 'center',
   },
   list: {
@@ -120,10 +154,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  titleRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
   itemTitle: {
     color: colors.onSurface,
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
+  },
+  sequenceText: {
+    color: colors.mossText,
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
   },
   itemDescription: {
     color: colors.onSurfaceVariant,

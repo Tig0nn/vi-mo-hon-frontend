@@ -1,8 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
-const { formatExpenseCategory } = require('../utils/expenseCategory.cjs');
+const {
+  formatExpenseCategory,
+  getExpenseCategoryShortLabel,
+} = require('../utils/expenseCategory.cjs');
+const {
+  formatExpenseAmount,
+  formatExpenseDateTime,
+  getExpenseTitle,
+} = require('../utils/expenseDisplay.cjs');
 
 export function RecentExpenseList({ expenses }) {
   if (!Array.isArray(expenses) || expenses.length === 0) {
@@ -11,9 +18,9 @@ export function RecentExpenseList({ expenses }) {
         <View style={styles.emptyIconWrapper}>
           <Text style={styles.emptyIconText}>₫</Text>
         </View>
-        <Text style={styles.emptyTitle}>Chưa có giao dịch</Text>
+        <Text style={styles.emptyTitle}>Chưa có khoản chi</Text>
         <Text style={styles.emptyDescription}>
-          Bạn chưa ghi khoản chi nào. Hãy nhập khoản chi đầu tiên ở ô phía trên.
+          Ghi khoản đầu tiên để Coach bắt đầu nhận ra thói quen của bạn.
         </Text>
       </View>
     );
@@ -21,26 +28,33 @@ export function RecentExpenseList({ expenses }) {
 
   return (
     <View style={styles.list}>
-      {expenses.map((expense, index) => {
-        const categoryLabel = formatExpenseCategory(expense?.category);
+      {expenses.slice(0, 5).map((expense, index) => {
+        const categoryLabel = formatExpenseCategory(expense?.category) || 'Khác';
+        const categoryShortLabel = getExpenseCategoryShortLabel(expense?.category);
 
-        return <View key={expense?.id || expense?._id || index} style={styles.listItem}>
-          <View style={styles.row}>
-            <Text selectable style={styles.itemTitle}>
-              {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
-            </Text>
-            <Text selectable style={styles.amountText}>
-              {formatValue(expense?.amount)}
-            </Text>
-          </View>
-          {categoryLabel ? (
-            <View style={styles.categoryBadge}>
-              <Text selectable style={styles.categoryText}>
-                {categoryLabel}
+        return (
+          <View
+            key={expense?.id || expense?._id || `${getExpenseTitle(expense, index)}-${index}`}
+            style={[styles.listItem, index > 0 && styles.listItemWithDivider]}
+          >
+            <View style={styles.categoryIcon}>
+              <Text style={styles.categoryIconText}>{categoryShortLabel}</Text>
+            </View>
+
+            <View style={styles.itemContent}>
+              <Text numberOfLines={1} selectable style={styles.itemTitle}>
+                {getExpenseTitle(expense, index)}
+              </Text>
+              <Text numberOfLines={1} selectable style={styles.metadataText}>
+                {formatExpenseDateTime(expense)} · {categoryLabel}
               </Text>
             </View>
-          ) : null}
-        </View>;
+
+            <Text selectable style={styles.amountText}>
+              {formatExpenseAmount(expense?.amount)}
+            </Text>
+          </View>
+        );
       })}
     </View>
   );
@@ -76,49 +90,56 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     fontSize: 14,
     lineHeight: 20,
+    maxWidth: 280,
     textAlign: 'center',
   },
   list: {
-    gap: 12,
+    marginHorizontal: -20,
+    marginBottom: -8,
   },
   listItem: {
-    backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-  },
-  row: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'space-between',
+    minHeight: 72,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  listItemWithDivider: {
+    borderColor: colors.softBorder,
+    borderTopWidth: 1,
+  },
+  categoryIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderRadius: 999,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  categoryIconText: {
+    color: colors.mossText,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  itemContent: {
+    flex: 1,
+    gap: 3,
   },
   itemTitle: {
     color: colors.onSurface,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  amountText: {
-    color: colors.error,
-    fontSize: 16,
-    fontVariant: ['tabular-nums'],
+    fontSize: 15,
     fontWeight: '700',
   },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceRice,
-    borderColor: colors.softBorder,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  categoryText: {
-    color: colors.mossText,
+  metadataText: {
+    color: colors.onSurfaceVariant,
     fontSize: 12,
-    fontWeight: '600',
+    lineHeight: 17,
+  },
+  amountText: {
+    color: colors.onSurface,
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
   },
 });
