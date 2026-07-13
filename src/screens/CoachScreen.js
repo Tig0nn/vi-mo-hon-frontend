@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,15 +11,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { apiPost } from '../api/client';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
+
+const mascotImage = require('../../design-reference/ảnh Mascot.png');
 
 const INITIAL_MESSAGES = [
   {
     id: 'coach-welcome',
     role: 'coach',
-    text: 'Xin chào, tôi có thể giúp gì cho bạn? Hỏi tôi về chi tiêu, tiết kiệm hoặc món bạn đang phân vân mua nha.',
+    text: 'Xin chào, tui là Mỏ Hỗn AI. Kể tui nghe món bạn đang phân vân hoặc khoản chi khiến bạn hơi tiếc nha.',
   },
 ];
 
@@ -30,6 +34,12 @@ const DEFAULT_SUGGESTIONS = [
 ];
 
 const createMessageId = (role) => `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+function CoachAvatar() {
+  return (
+    <Image source={mascotImage} style={styles.avatarImage} resizeMode="cover" />
+  );
+}
 
 export function CoachScreen({ userId }) {
   const scrollViewRef = useRef(null);
@@ -87,7 +97,7 @@ export function CoachScreen({ userId }) {
         },
       ]);
     } catch (chatError) {
-      setError('Coach hơi lag rồi, thử lại nha.');
+      setError('Coach đang hơi lag, thử lại sau nha.');
     } finally {
       setIsSending(false);
     }
@@ -98,50 +108,68 @@ export function CoachScreen({ userId }) {
       behavior={Platform.select({ android: 'height', ios: 'padding' })}
       style={styles.container}
     >
-      <ScrollView
-        ref={scrollViewRef}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.messageList}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
-        showsVerticalScrollIndicator={false}
-        style={styles.messageScroll}
-      >
-        <View style={styles.topArea}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>MH</Text>
+      <View style={styles.chatShell}>
+        <View style={styles.coachHeader}>
+          <CoachAvatar />
+          <View style={styles.coachTitleGroup}>
+            <Text style={styles.coachName}>Mỏ Hỗn AI</Text>
+            <Text style={styles.coachStatus}>Phân tích khoản chi và phản vấn mua hàng</Text>
           </View>
-          <View style={styles.speechBubble}>
-            <Text style={styles.speechText}>Bạn muốn biết gì về tài chính của mình?</Text>
-          </View>
+          <Ionicons name="sparkles" size={20} color={colors.goldAccent} />
         </View>
 
-        {messages.map((message) => {
-          const isUser = message.role === 'user';
+        <ScrollView
+          ref={scrollViewRef}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.messageList}
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: false })}
+          showsVerticalScrollIndicator={false}
+          style={styles.messageScroll}
+        >
+          {messages.map((message) => {
+            const isUser = message.role === 'user';
 
-          return (
-            <View
-              key={message.id}
-              style={[styles.messageRow, isUser ? styles.userMessageRow : styles.coachMessageRow]}
-            >
-              <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.coachBubble]}>
-                <Text selectable style={[styles.messageText, isUser && styles.userMessageText]}>
-                  {message.text}
-                </Text>
+            return (
+              <View
+                key={message.id}
+                style={[styles.messageRow, isUser ? styles.userMessageRow : styles.coachMessageRow]}
+              >
+                {!isUser ? <CoachAvatar /> : null}
+                <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.coachBubble]}>
+                  <Text selectable style={[styles.messageText, isUser && styles.userMessageText]}>
+                    {message.text}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+
+          {isSending ? (
+            <View style={[styles.messageRow, styles.coachMessageRow]}>
+              <CoachAvatar />
+              <View style={[styles.messageBubble, styles.coachBubble, styles.loadingBubble]}>
+                <ActivityIndicator color={colors.primary} size="small" />
+                <Text style={styles.loadingText}>Đang nghĩ...</Text>
               </View>
             </View>
-          );
-        })}
+          ) : null}
+        </ScrollView>
+      </View>
 
-        {isSending ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} size="small" />
-            <Text style={styles.loadingText}>Coach đang nghĩ...</Text>
-          </View>
-        ) : null}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Ionicons name="alert-circle" size={18} color={colors.error} />
+          <Text selectable style={styles.errorText}>
+            {error}
+          </Text>
+        </View>
+      ) : null}
 
+      <View style={styles.composer}>
         <ScrollView
           contentContainerStyle={styles.suggestionList}
           horizontal
+          keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
           showsHorizontalScrollIndicator={false}
         >
@@ -159,38 +187,30 @@ export function CoachScreen({ userId }) {
             </Pressable>
           ))}
         </ScrollView>
-      </ScrollView>
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text selectable style={styles.errorText}>
-            {error}
-          </Text>
+        <View style={styles.inputBar}>
+          <TextInput
+            editable={!isSending}
+            onChangeText={setInputText}
+            onSubmitEditing={() => sendMessage(inputText)}
+            placeholder="Hỏi Mỏ Hỗn"
+            placeholderTextColor={colors.onSurfaceVariant}
+            returnKeyType="send"
+            style={styles.input}
+            value={inputText}
+          />
+          <Pressable
+            disabled={!inputText.trim() || isSending}
+            onPress={() => sendMessage(inputText)}
+            style={({ pressed }) => [
+              styles.sendButton,
+              (!inputText.trim() || isSending) && styles.sendButtonDisabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons name="send" size={18} color={colors.surfaceRice} />
+          </Pressable>
         </View>
-      ) : null}
-
-      <View style={styles.inputBar}>
-        <TextInput
-          editable={!isSending}
-          onChangeText={setInputText}
-          onSubmitEditing={() => sendMessage(inputText)}
-          placeholder="Hỏi Mỏ Hỗn"
-          placeholderTextColor={colors.onSurfaceVariant}
-          returnKeyType="send"
-          style={styles.input}
-          value={inputText}
-        />
-        <Pressable
-          disabled={!inputText.trim() || isSending}
-          onPress={() => sendMessage(inputText)}
-          style={({ pressed }) => [
-            styles.sendButton,
-            (!inputText.trim() || isSending) && styles.sendButtonDisabled,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.sendButtonText}>Gửi</Text>
-        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -199,55 +219,59 @@ export function CoachScreen({ userId }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    gap: 14,
+    gap: 12,
     minHeight: 0,
   },
-  topArea: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryFixedDim,
-    borderRadius: 999,
-    borderWidth: 2,
-    height: 52,
-    justifyContent: 'center',
-    width: 52,
-  },
-  avatarText: {
-    color: colors.surfaceRice,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  speechBubble: {
+  chatShell: {
     backgroundColor: colors.surfaceRice,
     borderColor: colors.softBorder,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minHeight: 0,
+    overflow: 'hidden',
   },
-  speechText: {
+  coachHeader: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderBottomColor: colors.softBorder,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  coachTitleGroup: {
+    flex: 1,
+    minWidth: 0,
+  },
+  coachName: {
     color: colors.onSurface,
-    flexShrink: 1,
     fontSize: 16,
-    fontWeight: '800',
-    lineHeight: 22,
+    fontWeight: '900',
+  },
+  coachStatus: {
+    color: colors.onSurfaceVariant,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+  },
+  avatarImage: {
+    borderRadius: 999,
+    height: 38,
+    width: 48,
   },
   messageScroll: {
     flex: 1,
   },
   messageList: {
-    gap: 10,
-    paddingBottom: 12,
-    paddingTop: 4,
+    gap: 12,
+    padding: 12,
+    paddingBottom: 16,
   },
   messageRow: {
+    alignItems: 'flex-end',
     flexDirection: 'row',
+    gap: 8,
   },
   coachMessageRow: {
     justifyContent: 'flex-start',
@@ -257,12 +281,12 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     borderRadius: 18,
-    maxWidth: '82%',
+    maxWidth: '78%',
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
   coachBubble: {
-    backgroundColor: colors.surfaceRice,
+    backgroundColor: colors.surfaceMist,
     borderBottomLeftRadius: 6,
     borderColor: colors.softBorder,
     borderWidth: 1,
@@ -280,47 +304,53 @@ const styles = StyleSheet.create({
   userMessageText: {
     color: colors.surfaceRice,
   },
-  loadingRow: {
+  loadingBubble: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
   },
   loadingText: {
     color: colors.onSurfaceVariant,
     fontSize: 13,
-    fontWeight: '700',
-  },
-  suggestionList: {
-    gap: 8,
-    paddingRight: 20,
-    paddingTop: 4,
-  },
-  suggestionChip: {
-    backgroundColor: colors.onSurface,
-    borderRadius: 999,
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  suggestionText: {
-    color: colors.surfaceRice,
-    fontSize: 13,
     fontWeight: '800',
   },
   errorBox: {
+    alignItems: 'center',
     backgroundColor: '#ffdad6',
     borderColor: '#ffb4ab',
     borderRadius: 14,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
     padding: 12,
   },
   errorText: {
     color: colors.error,
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  composer: {
+    gap: 10,
+  },
+  suggestionList: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  suggestionChip: {
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.primaryFixedDim,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 14,
+  },
+  suggestionText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '900',
   },
   inputBar: {
     alignItems: 'center',
@@ -350,12 +380,7 @@ const styles = StyleSheet.create({
     width: 46,
   },
   sendButtonDisabled: {
-    backgroundColor: colors.softBorder,
-  },
-  sendButtonText: {
-    color: colors.surfaceRice,
-    fontSize: 13,
-    fontWeight: '900',
+    backgroundColor: colors.primaryContainer,
   },
   pressed: {
     opacity: 0.75,

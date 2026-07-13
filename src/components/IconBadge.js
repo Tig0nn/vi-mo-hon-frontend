@@ -14,7 +14,6 @@ export function IconBadge({ label, variant = 'muted', size = 'md' }) {
 const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
-    borderRadius: 999,
     justifyContent: 'center',
   },
   md: {
@@ -26,19 +25,10 @@ const styles = StyleSheet.create({
     width: 64,
   },
   muted: {
-    backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
-    borderWidth: 1,
   },
   primary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    borderWidth: 1,
   },
   warm: {
-    backgroundColor: colors.secondaryContainer,
-    borderColor: colors.secondaryContainer,
-    borderWidth: 1,
   },
   label: {
     fontWeight: '800',
@@ -54,7 +44,7 @@ const styles = StyleSheet.create({
     color: colors.mossText,
   },
   primaryLabel: {
-    color: colors.surfaceRice,
+    color: colors.primary,
   },
   warmLabel: {
     color: colors.onSurface,

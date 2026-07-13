@@ -23,11 +23,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 16,
     padding: 20,
-    shadowColor: colors.mossText,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2, // for android
   },
   header: {
     flexDirection: 'row',

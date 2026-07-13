@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
@@ -8,9 +9,7 @@ export function RecentExpenseList({ expenses }) {
   if (!Array.isArray(expenses) || expenses.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <View style={styles.emptyIconWrapper}>
-          <Text style={styles.emptyIconText}>₫</Text>
-        </View>
+        <Ionicons name="receipt-outline" size={34} color={colors.primary} />
         <Text style={styles.emptyTitle}>Chưa có giao dịch</Text>
         <Text style={styles.emptyDescription}>
           Bạn chưa ghi khoản chi nào. Hãy nhập khoản chi đầu tiên ở ô phía trên.
@@ -24,23 +23,25 @@ export function RecentExpenseList({ expenses }) {
       {expenses.map((expense, index) => {
         const categoryLabel = formatExpenseCategory(expense?.category);
 
-        return <View key={expense?.id || expense?._id || index} style={styles.listItem}>
-          <View style={styles.row}>
-            <Text selectable style={styles.itemTitle}>
-              {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
-            </Text>
-            <Text selectable style={styles.amountText}>
-              {formatValue(expense?.amount)}
-            </Text>
-          </View>
-          {categoryLabel ? (
-            <View style={styles.categoryBadge}>
-              <Text selectable style={styles.categoryText}>
-                {categoryLabel}
+        return (
+          <View key={expense?.id || expense?._id || index} style={styles.listItem}>
+            <View style={styles.row}>
+              <Text selectable style={styles.itemTitle}>
+                {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
+              </Text>
+              <Text selectable style={styles.amountText}>
+                {formatValue(expense?.amount)}
               </Text>
             </View>
-          ) : null}
-        </View>;
+            {categoryLabel ? (
+              <View style={styles.categoryBadge}>
+                <Text selectable style={styles.categoryText}>
+                  {categoryLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        );
       })}
     </View>
   );
@@ -52,20 +53,6 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
     paddingVertical: 28,
-  },
-  emptyIconWrapper: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMist,
-    borderRadius: 32,
-    height: 64,
-    justifyContent: 'center',
-    marginBottom: 8,
-    width: 64,
-  },
-  emptyIconText: {
-    color: colors.mossText,
-    fontSize: 24,
-    fontWeight: '800',
   },
   emptyTitle: {
     color: colors.onSurface,
@@ -83,9 +70,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
     borderRadius: 12,
-    borderWidth: 1,
     gap: 8,
     padding: 16,
   },

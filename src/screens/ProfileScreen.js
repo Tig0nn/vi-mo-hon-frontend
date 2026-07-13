@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { apiPatch } from '../api/client';
 import { Card } from '../components/Card';
 import { DataRow } from '../components/DataRow';
-import { IconBadge } from '../components/IconBadge';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
 import { formatTargetDate, formatVnd, GOAL_LABELS } from '../utils/profile';
@@ -66,8 +66,38 @@ function parseReminderTimeInput(value) {
   return { hour, minute };
 }
 
+function SectionHeader({ icon, title, hint, gold = false }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionCopy}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+      </View>
+      <Ionicons name={icon} size={22} color={gold ? colors.goldAccent : colors.primary} />
+    </View>
+  );
+}
+
+function MiniBadge({ icon, label, earned }) {
+  return (
+    <View style={[styles.miniBadge, !earned && styles.miniBadgeLocked]}>
+      <View style={[styles.miniBadgeIcon, earned ? styles.miniBadgeIconEarned : styles.miniBadgeIconLocked]}>
+        <Ionicons
+          name={earned ? icon : 'lock-closed'}
+          size={18}
+          color={earned ? colors.surfaceRice : colors.onSurfaceVariant}
+        />
+      </View>
+      <Text style={[styles.miniBadgeText, !earned && styles.miniBadgeTextLocked]}>{label}</Text>
+    </View>
+  );
+}
+
 export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefreshDashboard }) {
-  const dashboardProfile = (dashboard?.data ?? dashboard)?.profile;
+  const dashboardData = dashboard?.data ?? dashboard ?? {};
+  const dashboardProfile = dashboardData?.profile;
+  const recentExpenses = Array.isArray(dashboardData.recentExpenses) ? dashboardData.recentExpenses : [];
+  const boss = dashboardData.boss ?? {};
   const profile = useMemo(
     () => ({ ...(dashboardProfile || {}), ...(savedProfile || {}) }),
     [dashboardProfile, savedProfile]
@@ -88,6 +118,12 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     enabled: false,
     time: DEFAULT_REMINDER_TIME,
   });
+
+  const completedChallenges = Number(boss.completedChallenges || 0);
+  const totalChallenges = Number(boss.totalChallenges || 0);
+  const chapterPercent = totalChallenges > 0
+    ? Math.max(0, Math.min(100, (completedChallenges / totalChallenges) * 100))
+    : 0;
 
   const refreshReminderState = useCallback(async () => {
     try {
@@ -148,6 +184,7 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
   const handleSave = async () => {
     const displayName = form.displayName.trim();
     const monthlyBudget = parseMonthlyBudget(form.monthlyBudget);
+
     if (!displayName) {
       setFormError('Tên hiển thị không được để trống.');
       return;
@@ -171,7 +208,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     try {
       await apiPatch(`/profile/${userId}`, payload);
       setSuccessMessage('Đã lưu hồ sơ thành công.');
-
       await onRefreshDashboard?.();
       setIsEditing(false);
     } catch (saveError) {
@@ -297,7 +333,9 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
   if (isEditing) {
     return (
       <View style={styles.editContainer}>
-        <Card title="Chỉnh sửa hồ sơ" icon={<IconBadge label="✎" variant="warm" />}>
+        <Card>
+          <SectionHeader icon="create" title="Chỉnh sửa hồ sơ" hint="Tên hiển thị và ngân sách tháng" />
+
           {formError ? (
             <View style={styles.errorBox}>
               <Text selectable style={styles.errorText}>
@@ -365,7 +403,8 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
 
   return (
     <View style={styles.container}>
-      <Card title="Kế hoạch tiền bạc" icon={<IconBadge label="₫" />}>
+      <Card>
+        <SectionHeader icon="wallet" title="Kế hoạch tiền bạc" hint="Thông tin profile từ backend" />
         <DataRow
           label="Mục tiêu"
           value={GOAL_LABELS[profile.mainGoal] || 'Chưa thiết lập mục tiêu'}
@@ -376,7 +415,29 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
         <DataRow label="Đã chi tháng này" value={formatVnd(profile.monthlySpent)} />
       </Card>
 
-      <Card title="Nhắc nhở hằng ngày" icon={<IconBadge label="NR" variant="warm" />}>
+      <Card>
+        <SectionHeader icon="ribbon" title="Thành tựu & tiến độ" hint="Dựa trên dashboard hiện có" gold />
+
+        <View style={styles.chapterProgress}>
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLabel}>Chapter hiện tại</Text>
+            <Text style={styles.progressValue}>{completedChallenges}/{totalChallenges || 0}</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${chapterPercent}%` }]} />
+          </View>
+        </View>
+
+        <View style={styles.miniBadgeGrid}>
+          <MiniBadge icon="receipt" label="Ghi chép" earned={recentExpenses.length > 0} />
+          <MiniBadge icon="shield-checkmark" label="Kỷ luật" earned={Number(profile.discipline || 0) >= 10} />
+          <MiniBadge icon="trophy" label="Challenge" earned={completedChallenges > 0} />
+          <MiniBadge icon="star" label="Lên cấp" earned={Number(profile.level || 1) > 1} />
+        </View>
+      </Card>
+
+      <Card>
+        <SectionHeader icon="notifications" title="Nhắc nhở hằng ngày" hint="Local reminder trên thiết bị" />
         <DataRow label="Trạng thái" value={dailyReminder.enabled ? 'Đang bật' : 'Đang tắt'} />
         <DataRow label="Giờ nhắc" value={formatReminderTime(dailyReminder.time)} />
 
@@ -529,26 +590,47 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingBottom: 48,
   },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  sectionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionTitle: {
+    color: colors.onSurface,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  sectionHint: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   field: {
     gap: 8,
   },
   label: {
     color: colors.mossText,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   input: {
     ...safeTextInputStyles.singleLine,
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     color: colors.onSurface,
   },
   timeEditor: {
     backgroundColor: colors.surfaceMist,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 12,
     padding: 12,
@@ -565,7 +647,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 999,
     justifyContent: 'center',
     minHeight: 48,
     paddingHorizontal: 16,
@@ -573,13 +655,13 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.surfaceRice,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   secondaryButton: {
     alignItems: 'center',
     backgroundColor: colors.surfaceRice,
     borderColor: colors.softBorder,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 48,
@@ -590,9 +672,9 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   secondaryButtonText: {
-    color: colors.mossText,
+    color: colors.primary,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   buttonPressed: {
     opacity: 0.8,
@@ -604,7 +686,7 @@ const styles = StyleSheet.create({
   errorBox: {
     backgroundColor: '#ffdad6',
     borderColor: '#ffb4ab',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
@@ -616,20 +698,97 @@ const styles = StyleSheet.create({
   inlineErrorText: {
     color: colors.error,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 18,
   },
   successBox: {
-    backgroundColor: '#DFF3D2',
+    backgroundColor: colors.surfaceMist,
     borderColor: colors.primaryFixedDim,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
   successText: {
     color: colors.onPrimaryContainer,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 20,
+  },
+  chapterProgress: {
+    backgroundColor: colors.surfaceMist,
+    borderRadius: 16,
+    gap: 8,
+    padding: 12,
+  },
+  progressRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    color: colors.onSurface,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  progressValue: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '900',
+  },
+  progressTrack: {
+    backgroundColor: colors.primaryFixedDim,
+    borderRadius: 999,
+    height: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    height: '100%',
+  },
+  miniBadgeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  miniBadge: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMist,
+    borderColor: colors.softBorder,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: 8,
+    minWidth: 134,
+    padding: 10,
+  },
+  miniBadgeLocked: {
+    opacity: 0.68,
+  },
+  miniBadgeIcon: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  miniBadgeIconEarned: {
+    backgroundColor: colors.goldAccent,
+  },
+  miniBadgeIconLocked: {
+    backgroundColor: colors.surfaceRice,
+    borderColor: colors.softBorder,
+    borderWidth: 1,
+  },
+  miniBadgeText: {
+    color: colors.onSurface,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  miniBadgeTextLocked: {
+    color: colors.onSurfaceVariant,
   },
 });

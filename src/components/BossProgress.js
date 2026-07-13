@@ -81,9 +81,7 @@ const styles = StyleSheet.create({
   nameBox: {
     alignItems: "center",
     backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
     borderRadius: 12,
-    borderWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 120,

@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { apiGet, apiPost } from './src/api/client';
 import { BossScreen } from './src/screens/BossScreen';
 import { CharacterScreen } from './src/screens/CharacterScreen';
@@ -22,11 +23,11 @@ import { isCompleteProfile } from './src/utils/profile';
 
 
 const TABS = [
-  { key: 'home', label: 'Trang chủ', icon: 'TC' },
-  { key: 'boss', label: 'Boss', icon: 'B' },
-  { key: 'coach', label: 'Coach', icon: 'C' },
-  { key: 'character', label: 'Nhân vật', icon: 'NV' },
-  { key: 'profile', label: 'Hồ sơ', icon: 'HS' },
+  { key: 'home', label: 'Trang chủ', icon: 'home-outline', activeIcon: 'home' },
+  { key: 'boss', label: 'Boss', icon: 'skull-outline', activeIcon: 'skull' },
+  { key: 'coach', label: 'Coach', icon: 'chatbubble-outline', activeIcon: 'chatbubble' },
+  { key: 'character', label: 'Nhân vật', icon: 'person-outline', activeIcon: 'person' },
+  { key: 'profile', label: 'Hồ sơ', icon: 'settings-outline', activeIcon: 'settings' },
 ];
 
 function BottomTabs({ activeTab, onChangeTab }) {
@@ -41,20 +42,15 @@ function BottomTabs({ activeTab, onChangeTab }) {
             onPress={() => onChangeTab(tab.key)}
             style={({ pressed }) => [
               styles.tabButton,
-              isActive && styles.activeTabButton,
               pressed && styles.tabButtonPressed,
             ]}
           >
-            <View style={[styles.tabIcon, isActive && styles.activeTabIcon]}>
-              <Text
-                style={[
-                  styles.tabIconText,
-                  isActive && styles.activeTabIconText,
-                ]}
-              >
-                {tab.icon}
-              </Text>
-            </View>
+            <Ionicons
+              name={isActive ? tab.activeIcon : tab.icon}
+              size={24}
+              color={isActive ? colors.primary : colors.onSurfaceVariant}
+              style={styles.tabIcon}
+            />
 
             <Text
               numberOfLines={1}
@@ -393,40 +389,16 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     alignItems: 'center',
-    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
     height: 56,
     paddingHorizontal: 2,
   },
-  activeTabButton: {
-    backgroundColor: colors.primaryContainer,
-  },
   tabButtonPressed: {
     opacity: 0.7,
   },
   tabIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 24,
-    justifyContent: 'center',
     marginBottom: 4,
-    width: 24,
-  },
-  activeTabIcon: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  tabIconText: {
-    color: colors.mossText,
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  activeTabIconText: {
-    color: colors.surfaceRice,
   },
   tabText: {
     color: colors.mossText,
@@ -435,7 +407,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   activeTabText: {
-    color: colors.onPrimaryContainer,
+    color: colors.primary,
     fontWeight: '700',
   },
 });

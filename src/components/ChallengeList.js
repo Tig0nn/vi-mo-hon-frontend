@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { IconBadge } from './IconBadge';
+import { Ionicons } from '@expo/vector-icons';
 import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
@@ -7,9 +7,7 @@ export function ChallengeList({ challenges, completingChallengeId, onCompleteCha
   if (!Array.isArray(challenges) || challenges.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <View style={styles.emptyIconWrapper}>
-          <Text style={styles.emptyIconText}>OK</Text>
-        </View>
+        <Ionicons name="checkmark-done" size={34} color={colors.primary} />
         <Text style={styles.emptyTitle}>Chưa có nhiệm vụ</Text>
         <Text style={styles.emptyDescription}>
           Hiện tại chưa có nhiệm vụ đang mở. Hãy làm mới dashboard sau khi backend tạo thử thách mới.
@@ -28,7 +26,7 @@ export function ChallengeList({ challenges, completingChallengeId, onCompleteCha
         return (
           <View key={challengeId || title} style={styles.listItem}>
             <View style={styles.header}>
-              <IconBadge label="!" variant="warm" />
+              <Ionicons name="flag" size={22} color={colors.primary} />
               <View style={styles.titleContainer}>
                 <Text selectable style={styles.itemTitle}>
                   {title}
@@ -76,20 +74,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 28,
   },
-  emptyIconWrapper: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMist,
-    borderRadius: 32,
-    height: 64,
-    justifyContent: 'center',
-    marginBottom: 8,
-    width: 64,
-  },
-  emptyIconText: {
-    color: colors.mossText,
-    fontSize: 13,
-    fontWeight: '800',
-  },
   emptyTitle: {
     color: colors.onSurface,
     fontSize: 16,
@@ -106,9 +90,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     backgroundColor: colors.surfaceMist,
-    borderColor: colors.softBorder,
     borderRadius: 12,
-    borderWidth: 1,
     gap: 16,
     padding: 16,
   },
