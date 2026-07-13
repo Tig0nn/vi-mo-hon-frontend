@@ -21,6 +21,8 @@ import { colors } from './src/theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isCompleteProfile } from './src/utils/profile';
 
+const { inferExpenseCategory } = require('./src/utils/expenseCategory.cjs');
+
 
 const TABS = [
   { key: 'home', label: 'Trang chủ', icon: 'home-outline', activeIcon: 'home' },
@@ -92,6 +94,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [dashboard, setDashboard] = useState(null);
   const [expenseText, setExpenseText] = useState('');
+  const [selectedExpenseCategory, setSelectedExpenseCategory] = useState('OTHER');
+  const [isExpenseCategoryManual, setIsExpenseCategoryManual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [completingChallengeId, setCompletingChallengeId] = useState(null);
   const [error, setError] = useState('');
@@ -151,6 +155,25 @@ export default function App() {
     }
   }, [isBootstrapping, bootstrapError, needsOnboarding, userId, loadDashboard]);
 
+  const handleChangeExpenseText = (value) => {
+    setExpenseText(value);
+
+    if (!value.trim()) {
+      setSelectedExpenseCategory('OTHER');
+      setIsExpenseCategoryManual(false);
+      return;
+    }
+
+    if (!isExpenseCategoryManual) {
+      setSelectedExpenseCategory(inferExpenseCategory(value));
+    }
+  };
+
+  const handleSelectExpenseCategory = (category) => {
+    setSelectedExpenseCategory(category);
+    setIsExpenseCategoryManual(true);
+  };
+
   const handleSubmitExpense = async () => {
     const trimmedText = expenseText.trim();
 
@@ -166,8 +189,11 @@ export default function App() {
       await apiPost('/expenses/quick-input', {
         userId,
         text: trimmedText,
+        category: selectedExpenseCategory,
       });
       setExpenseText('');
+      setSelectedExpenseCategory('OTHER');
+      setIsExpenseCategoryManual(false);
       await loadDashboard();
     } catch (submitError) {
       setError(submitError.message);
@@ -281,8 +307,12 @@ export default function App() {
               dashboard={dashboard}
               expenseText={expenseText}
               isLoading={isLoading}
-              onChangeExpenseText={setExpenseText}
+              selectedExpenseCategory={selectedExpenseCategory}
+              completingChallengeId={completingChallengeId}
+              onChangeExpenseText={handleChangeExpenseText}
+              onSelectExpenseCategory={handleSelectExpenseCategory}
               onSubmitExpense={handleSubmitExpense}
+              onCompleteChallenge={handleCompleteChallenge}
             />
           ) : null}
 

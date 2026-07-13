@@ -1,12 +1,31 @@
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { ChallengeList } from '../components/ChallengeList';
 import { RecentExpenseList } from '../components/RecentExpenseList';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
 import { formatVnd, GOAL_LABELS } from '../utils/profile';
 
-const mascotImage = require('../../design-reference/ảnh Mascot.png');
+const { CATEGORY_LABELS } = require('../utils/expenseCategory.cjs');
+const { getTodayChallenge } = require('../utils/bossChallenges.cjs');
+
+const mascotImage = require('../../design-reference/mascot.png');
+
+const QUICK_EXPENSE_CATEGORIES = [
+  'FOOD_DRINK',
+  'SHOPPING',
+  'TRANSPORT',
+  'ENTERTAINMENT',
+  'OTHER',
+];
 
 function clampPercent(value) {
   const numericValue = Number(value);
@@ -21,7 +40,12 @@ function clampPercent(value) {
 function ProgressPill({ value, color = colors.primary }) {
   return (
     <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${clampPercent(value)}%`, backgroundColor: color }]} />
+      <View
+        style={[
+          styles.progressFill,
+          { width: `${clampPercent(value)}%`, backgroundColor: color },
+        ]}
+      />
     </View>
   );
 }
@@ -45,18 +69,22 @@ export function HomeScreen({
   dashboard,
   expenseText,
   isLoading,
+  selectedExpenseCategory,
+  completingChallengeId,
   onChangeExpenseText,
+  onSelectExpenseCategory,
   onSubmitExpense,
+  onCompleteChallenge,
 }) {
   const data = dashboard?.data ?? dashboard ?? {};
   const profile = data.profile ?? {};
+  const todayChallenge = getTodayChallenge(data);
   const monthlyBudget = Number(profile.monthlyBudget ?? profile.budget ?? 0);
   const monthlySpent = Number(profile.monthlySpent ?? 0);
   const budgetProgress = monthlyBudget > 0 ? (monthlySpent / monthlyBudget) * 100 : 0;
   const remainingBudget = Math.max(0, monthlyBudget - monthlySpent);
   const goalLabel = GOAL_LABELS[profile.mainGoal] || profile.mainGoal || 'Mục tiêu tài chính';
 
-  // TODO: expose savings/knowledge in Dashboard API when user_progress is ready for these stats.
   const discipline = profile.discipline ?? 0;
   const savings = profile.savings ?? profile.saving ?? 0;
   const knowledge = profile.knowledge ?? 0;
@@ -128,12 +156,43 @@ export function HomeScreen({
           />
         </View>
 
+        <View style={styles.categorySection}>
+          <Text style={styles.categoryLabel}>Phân loại</Text>
+          <View style={styles.categoryList}>
+            {QUICK_EXPENSE_CATEGORIES.map((category) => {
+              const isSelected = selectedExpenseCategory === category;
+
+              return (
+                <Pressable
+                  key={category}
+                  disabled={isLoading}
+                  onPress={() => onSelectExpenseCategory(category)}
+                  style={({ pressed }) => [
+                    styles.categoryChip,
+                    isSelected && styles.categoryChipSelected,
+                    pressed && styles.categoryChipPressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      isSelected && styles.categoryChipTextSelected,
+                    ]}
+                  >
+                    {CATEGORY_LABELS[category]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <Pressable
-          disabled={isLoading}
+          disabled={isLoading || !expenseText.trim()}
           onPress={onSubmitExpense}
           style={({ pressed }) => [
             styles.primaryButton,
-            (pressed || isLoading) && styles.buttonPressed,
+            (pressed || isLoading || !expenseText.trim()) && styles.buttonPressed,
           ]}
         >
           <Ionicons name="add-circle" size={20} color={colors.surfaceRice} />
@@ -141,11 +200,32 @@ export function HomeScreen({
         </Pressable>
       </Card>
 
+      <Card
+        title="Nhiệm vụ hôm nay"
+        icon={<Ionicons name="flag-outline" size={22} color={colors.primary} />}
+        headerRight={
+          todayChallenge?.sequenceOrder && todayChallenge?.totalChallenges ? (
+            <Text style={styles.challengeCount}>
+              {todayChallenge.sequenceOrder}/{todayChallenge.totalChallenges}
+            </Text>
+          ) : null
+        }
+      >
+        <ChallengeList
+          challenges={todayChallenge ? [{ ...todayChallenge, status: 'active' }] : []}
+          challengeMessage={data.challengeMessage}
+          nextChallengeAvailableOn={data.nextChallengeAvailableOn}
+          bossStatus={data.boss?.status}
+          completingChallengeId={completingChallengeId}
+          onCompleteChallenge={onCompleteChallenge}
+        />
+      </Card>
+
       <Card>
         <View style={styles.quickHeader}>
           <View>
             <Text style={styles.sectionTitle}>Giao dịch gần đây</Text>
-            <Text style={styles.sectionHint}>Từ dashboard backend hiện tại</Text>
+            <Text style={styles.sectionHint}>5 khoản chi mới nhất</Text>
           </View>
           <Ionicons name="receipt-outline" size={22} color={colors.primary} />
         </View>
@@ -302,6 +382,41 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 0,
   },
+  categorySection: {
+    gap: 9,
+  },
+  categoryLabel: {
+    color: colors.mossText,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  categoryList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryChip: {
+    borderColor: colors.softBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.primaryFixedDim,
+    borderColor: colors.primary,
+  },
+  categoryChipPressed: {
+    opacity: 0.72,
+  },
+  categoryChipText: {
+    color: colors.mossText,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  categoryChipTextSelected: {
+    color: colors.onPrimaryContainer,
+  },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
@@ -313,12 +428,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   buttonPressed: {
-    opacity: 0.8,
+    opacity: 0.62,
     transform: [{ translateY: 1 }],
   },
   primaryButtonText: {
     color: colors.surfaceRice,
     fontSize: 16,
+    fontWeight: '900',
+  },
+  challengeCount: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
     fontWeight: '900',
   },
   mascotPeek: {

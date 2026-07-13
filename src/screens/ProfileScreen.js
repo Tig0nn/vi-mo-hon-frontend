@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiPatch } from '../api/client';
@@ -7,16 +7,6 @@ import { DataRow } from '../components/DataRow';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
 import { formatTargetDate, formatVnd, GOAL_LABELS } from '../utils/profile';
-import {
-  cancelDailyExpenseReminder,
-  formatReminderTime,
-  getScheduledReminders,
-  requestNotificationPermission,
-  scheduleDailyExpenseReminder,
-  scheduleTestExpenseReminder,
-} from '../utils/notifications';
-
-const DEFAULT_REMINDER_TIME = { hour: 20, minute: 30 };
 
 function profileValue(profile, primaryKey, fallbackKey = null) {
   return profile?.[primaryKey] ?? (fallbackKey ? profile?.[fallbackKey] : undefined);
@@ -49,22 +39,6 @@ function parseMonthlyBudget(value) {
   return Number.isFinite(monthlyBudget) && monthlyBudget > 0 ? monthlyBudget : null;
 }
 
-function parseReminderTimeInput(value) {
-  const match = value.trim().match(/^(\d{2}):(\d{2})$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    return null;
-  }
-
-  return { hour, minute };
-}
 
 function SectionHeader({ icon, title, hint, gold = false }) {
   return (
@@ -108,16 +82,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [notificationError, setNotificationError] = useState('');
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [isReminderLoading, setIsReminderLoading] = useState(false);
-  const [isReminderTimeEditing, setIsReminderTimeEditing] = useState(false);
-  const [reminderTimeText, setReminderTimeText] = useState(formatReminderTime(DEFAULT_REMINDER_TIME));
-  const [reminderTimeError, setReminderTimeError] = useState('');
-  const [dailyReminder, setDailyReminder] = useState({
-    enabled: false,
-    time: DEFAULT_REMINDER_TIME,
-  });
 
   const completedChallenges = Number(boss.completedChallenges || 0);
   const totalChallenges = Number(boss.totalChallenges || 0);
@@ -125,21 +89,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     ? Math.max(0, Math.min(100, (completedChallenges / totalChallenges) * 100))
     : 0;
 
-  const refreshReminderState = useCallback(async () => {
-    try {
-      const reminders = await getScheduledReminders();
-      const activeReminder = reminders[0];
-
-      setDailyReminder({
-        enabled: Boolean(activeReminder),
-        time: activeReminder?.time || DEFAULT_REMINDER_TIME,
-      });
-      setReminderTimeText(formatReminderTime(activeReminder?.time || DEFAULT_REMINDER_TIME));
-      setNotificationError('');
-    } catch (error) {
-      setNotificationError('Chưa đọc được lịch nhắc. Thử lại sau nhé.');
-    }
-  }, []);
 
   useEffect(() => {
     if (!isEditing) {
@@ -147,15 +96,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     }
   }, [currentFormState, isEditing]);
 
-  useEffect(() => {
-    if (!isReminderTimeEditing) {
-      setReminderTimeText(formatReminderTime(dailyReminder.time));
-    }
-  }, [dailyReminder.time, isReminderTimeEditing]);
-
-  useEffect(() => {
-    refreshReminderState();
-  }, [refreshReminderState]);
 
   const updateFormField = (field, value) => {
     setForm((currentForm) => ({
@@ -168,10 +108,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
     setForm(currentFormState);
     setFormError('');
     setSuccessMessage('');
-    setNotificationError('');
-    setNotificationMessage('');
-    setIsReminderTimeEditing(false);
-    setReminderTimeError('');
     setIsEditing(true);
   };
 
@@ -214,119 +150,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
       setFormError(saveError.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleEnableReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      const permission = await requestNotificationPermission();
-
-      if (!permission.granted) {
-        setNotificationError('Bạn cần cho phép thông báo để bật nhắc nhở hằng ngày.');
-        return;
-      }
-
-      await scheduleDailyExpenseReminder(dailyReminder.time || DEFAULT_REMINDER_TIME);
-      await refreshReminderState();
-      setNotificationMessage(
-        `Đã bật nhắc nhở hằng ngày lúc ${formatReminderTime(
-          dailyReminder.time || DEFAULT_REMINDER_TIME
-        )}.`
-      );
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa bật được nhắc nhở. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleDisableReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      await cancelDailyExpenseReminder();
-      await refreshReminderState();
-      setNotificationMessage('Đã tắt nhắc nhở hằng ngày.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa tắt được nhắc nhở. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleStartReminderTimeEditing = () => {
-    setReminderTimeText(formatReminderTime(dailyReminder.time));
-    setReminderTimeError('');
-    setNotificationError('');
-    setNotificationMessage('');
-    setIsReminderTimeEditing(true);
-  };
-
-  const handleCancelReminderTimeEditing = () => {
-    setReminderTimeText(formatReminderTime(dailyReminder.time));
-    setReminderTimeError('');
-    setIsReminderTimeEditing(false);
-  };
-
-  const handleSaveReminderTime = async () => {
-    const nextReminderTime = parseReminderTimeInput(reminderTimeText);
-
-    if (!nextReminderTime) {
-      setReminderTimeError('Giờ nhắc không hợp lệ. Hãy nhập dạng HH:mm, ví dụ 20:30.');
-      return;
-    }
-
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-    setReminderTimeError('');
-
-    try {
-      setDailyReminder((currentReminder) => ({
-        ...currentReminder,
-        time: nextReminderTime,
-      }));
-
-      if (dailyReminder.enabled) {
-        await scheduleDailyExpenseReminder(nextReminderTime);
-        await refreshReminderState();
-      }
-
-      setReminderTimeText(formatReminderTime(nextReminderTime));
-      setIsReminderTimeEditing(false);
-      setNotificationMessage('Đã cập nhật giờ nhắc.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa đổi được giờ nhắc. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
-    }
-  };
-
-  const handleSendTestReminder = async () => {
-    setIsReminderLoading(true);
-    setNotificationError('');
-    setNotificationMessage('');
-
-    try {
-      const permission = await requestNotificationPermission();
-
-      if (!permission.granted) {
-        setNotificationError('Bạn cần cho phép thông báo để gửi thử nhắc nhở.');
-        return;
-      }
-
-      await scheduleTestExpenseReminder();
-      setNotificationMessage('Đã hẹn thông báo thử sau 5 giây.');
-    } catch (error) {
-      setNotificationError(error.message || 'Chưa gửi thử được thông báo. Thử lại sau nhé.');
-    } finally {
-      setIsReminderLoading(false);
     }
   };
 
@@ -434,132 +257,6 @@ export function ProfileScreen({ dashboard, profile: savedProfile, userId, onRefr
           <MiniBadge icon="trophy" label="Challenge" earned={completedChallenges > 0} />
           <MiniBadge icon="star" label="Lên cấp" earned={Number(profile.level || 1) > 1} />
         </View>
-      </Card>
-
-      <Card>
-        <SectionHeader icon="notifications" title="Nhắc nhở hằng ngày" hint="Local reminder trên thiết bị" />
-        <DataRow label="Trạng thái" value={dailyReminder.enabled ? 'Đang bật' : 'Đang tắt'} />
-        <DataRow label="Giờ nhắc" value={formatReminderTime(dailyReminder.time)} />
-
-        {isReminderTimeEditing ? (
-          <View style={styles.timeEditor}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Nhập giờ nhắc</Text>
-              <TextInput
-                editable={!isReminderLoading}
-                keyboardType="numbers-and-punctuation"
-                onChangeText={(value) => {
-                  setReminderTimeText(value);
-                  setReminderTimeError('');
-                }}
-                placeholder="VD: 20:30"
-                placeholderTextColor={colors.onSurfaceVariant}
-                style={styles.input}
-                value={reminderTimeText}
-              />
-            </View>
-
-            {reminderTimeError ? (
-              <Text selectable style={styles.inlineErrorText}>
-                {reminderTimeError}
-              </Text>
-            ) : null}
-
-            <View style={styles.actionRow}>
-              <Pressable
-                disabled={isReminderLoading}
-                onPress={handleSaveReminderTime}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  styles.actionButton,
-                  (pressed || isReminderLoading) && styles.buttonPressed,
-                  isReminderLoading && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>Lưu giờ nhắc</Text>
-              </Pressable>
-
-              <Pressable
-                disabled={isReminderLoading}
-                onPress={handleCancelReminderTimeEditing}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  styles.actionButton,
-                  (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-                  isReminderLoading && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>Hủy</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleStartReminderTimeEditing}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Đổi giờ nhắc</Text>
-          </Pressable>
-        )}
-
-        {notificationError ? (
-          <View style={styles.errorBox}>
-            <Text selectable style={styles.errorText}>
-              {notificationError}
-            </Text>
-          </View>
-        ) : null}
-
-        {notificationMessage ? (
-          <View style={styles.successBox}>
-            <Text style={styles.successText}>{notificationMessage}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.actionRow}>
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleEnableReminder}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              styles.actionButton,
-              (pressed || isReminderLoading) && styles.buttonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>Bật nhắc nhở</Text>
-          </Pressable>
-
-          <Pressable
-            disabled={isReminderLoading}
-            onPress={handleDisableReminder}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              styles.actionButton,
-              (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-              isReminderLoading && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>Tắt nhắc nhở</Text>
-          </Pressable>
-        </View>
-
-        <Pressable
-          disabled={isReminderLoading}
-          onPress={handleSendTestReminder}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            (pressed || isReminderLoading) && styles.secondaryButtonPressed,
-            isReminderLoading && styles.buttonDisabled,
-          ]}
-        >
-          <Text style={styles.secondaryButtonText}>Gửi thử sau 5 giây</Text>
-        </Pressable>
       </Card>
 
       <Pressable

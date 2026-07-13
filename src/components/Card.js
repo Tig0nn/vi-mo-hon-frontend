@@ -1,15 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme/colors';
+import { StyleSheet, Text, View } from "react-native";
+import { colors } from "../theme/colors";
 
-export function Card({ title, children, icon }) {
+export function Card({ title, children, icon, headerRight }) {
   return (
     <View style={styles.card}>
-      {title && (
+      {title ? (
         <View style={styles.header}>
-          {icon}
-          <Text style={styles.cardTitle}>{title}</Text>
+          <View style={styles.headerTitleGroup}>
+            {icon}
+            <Text style={styles.cardTitle}>{title}</Text>
+          </View>
+          {headerRight ? (
+            <View style={styles.headerRight}>{headerRight}</View>
+          ) : null}
         </View>
-      )}
+      ) : null}
       {children}
     </View>
   );
@@ -25,13 +30,23 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  headerTitleGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
     gap: 8,
+  },
+  headerRight: {
+    alignItems: "flex-end",
   },
   cardTitle: {
     color: colors.onSurface,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "800",
   },
 });

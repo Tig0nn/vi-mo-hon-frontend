@@ -1,9 +1,26 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { formatValue } from '../utils/formatValue';
 import { colors } from '../theme/colors';
 
-const { formatExpenseCategory } = require('../utils/expenseCategory.cjs');
+const {
+  formatExpenseCategory,
+  normalizeCategory,
+} = require('../utils/expenseCategory.cjs');
+const {
+  formatExpenseAmount,
+  formatExpenseDateTime,
+  getExpenseTitle,
+} = require('../utils/expenseDisplay.cjs');
+
+const CATEGORY_ICONS = {
+  FOOD_DRINK: 'restaurant-outline',
+  SHOPPING: 'bag-handle-outline',
+  TRANSPORT: 'car-outline',
+  ENTERTAINMENT: 'game-controller-outline',
+  EDUCATION: 'book-outline',
+  SAVING: 'wallet-outline',
+  OTHER: 'receipt-outline',
+};
 
 export function RecentExpenseList({ expenses }) {
   if (!Array.isArray(expenses) || expenses.length === 0) {
@@ -12,7 +29,7 @@ export function RecentExpenseList({ expenses }) {
         <Ionicons name="receipt-outline" size={34} color={colors.primary} />
         <Text style={styles.emptyTitle}>Chưa có giao dịch</Text>
         <Text style={styles.emptyDescription}>
-          Bạn chưa ghi khoản chi nào. Hãy nhập khoản chi đầu tiên ở ô phía trên.
+          Ghi khoản đầu tiên để Coach bắt đầu nhận ra thói quen của bạn.
         </Text>
       </View>
     );
@@ -20,26 +37,33 @@ export function RecentExpenseList({ expenses }) {
 
   return (
     <View style={styles.list}>
-      {expenses.map((expense, index) => {
-        const categoryLabel = formatExpenseCategory(expense?.category);
+      {expenses.slice(0, 5).map((expense, index) => {
+        const category = normalizeCategory(expense?.category) || 'OTHER';
+        const categoryLabel = formatExpenseCategory(category) || 'Khác';
 
         return (
-          <View key={expense?.id || expense?._id || index} style={styles.listItem}>
-            <View style={styles.row}>
-              <Text selectable style={styles.itemTitle}>
-                {expense?.text || expense?.description || `Giao dịch ${index + 1}`}
+          <View
+            key={expense?.id || expense?._id || index}
+            style={[styles.listItem, index > 0 && styles.listItemWithDivider]}
+          >
+            <Ionicons
+              name={CATEGORY_ICONS[category] || CATEGORY_ICONS.OTHER}
+              size={22}
+              color={colors.primary}
+            />
+
+            <View style={styles.itemContent}>
+              <Text selectable style={styles.itemTitle} numberOfLines={1}>
+                {getExpenseTitle(expense, index)}
               </Text>
-              <Text selectable style={styles.amountText}>
-                {formatValue(expense?.amount)}
+              <Text selectable style={styles.metadataText} numberOfLines={1}>
+                {categoryLabel} · {formatExpenseDateTime(expense)}
               </Text>
             </View>
-            {categoryLabel ? (
-              <View style={styles.categoryBadge}>
-                <Text selectable style={styles.categoryText}>
-                  {categoryLabel}
-                </Text>
-              </View>
-            ) : null}
+
+            <Text selectable style={styles.amountText}>
+              {formatExpenseAmount(expense?.amount)}
+            </Text>
           </View>
         );
       })}
@@ -57,53 +81,50 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: colors.onSurface,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   emptyDescription: {
     color: colors.onSurfaceVariant,
     fontSize: 14,
     lineHeight: 20,
+    maxWidth: 280,
     textAlign: 'center',
   },
   list: {
-    gap: 12,
+    marginBottom: -8,
+    marginHorizontal: -20,
   },
   listItem: {
-    backgroundColor: colors.surfaceMist,
-    borderRadius: 12,
-    gap: 8,
-    padding: 16,
-  },
-  row: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'space-between',
+    minHeight: 68,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  listItemWithDivider: {
+    borderColor: colors.softBorder,
+    borderTopWidth: 1,
+  },
+  itemContent: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
   },
   itemTitle: {
     color: colors.onSurface,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  metadataText: {
+    color: colors.onSurfaceVariant,
+    fontSize: 12,
+    lineHeight: 17,
   },
   amountText: {
-    color: colors.error,
-    fontSize: 16,
+    color: colors.onSurface,
+    fontSize: 15,
     fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceRice,
-    borderColor: colors.softBorder,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  categoryText: {
-    color: colors.mossText,
-    fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '900',
   },
 });

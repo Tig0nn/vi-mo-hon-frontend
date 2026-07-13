@@ -19,7 +19,7 @@ import { apiPost, apiPostFormData } from '../api/client';
 import { colors } from '../theme/colors';
 import { safeTextInputStyles } from '../theme/inputStyles';
 
-const mascotImage = require('../../design-reference/ảnh Mascot.png');
+const mascotImage = require('../../design-reference/mascot.png');
 
 const INITIAL_MESSAGES = [
   {

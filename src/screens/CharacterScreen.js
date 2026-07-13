@@ -4,7 +4,7 @@ import { Card } from '../components/Card';
 import { DataRow } from '../components/DataRow';
 import { colors } from '../theme/colors';
 
-const mascotImage = require('../../design-reference/ảnh Mascot.png');
+const mascotImage = require('../../design-reference/mascot.png');
 
 function clampPercent(value) {
   const numericValue = Number(value);

@@ -1,22 +1,46 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BossProgress } from '../components/BossProgress';
 import { Card } from '../components/Card';
 import { ChallengeList } from '../components/ChallengeList';
 import { colors } from '../theme/colors';
 
-export function BossScreen({ dashboard, completingChallengeId, onCompleteChallenge }) {
+const { buildBossChallengeList } = require('../utils/bossChallenges.cjs');
+
+export function BossScreen({
+  dashboard,
+  completingChallengeId,
+  onCompleteChallenge,
+}) {
   const data = dashboard?.data ?? dashboard ?? {};
+  const challenges = buildBossChallengeList(data);
 
   return (
     <View style={styles.container}>
-      <Card title="Tiến độ Boss" icon={<Ionicons name="skull-outline" size={22} color={colors.primary} />}>
+      <Card
+        title="Tiến độ Boss"
+        icon={<Ionicons name="skull-outline" size={22} color={colors.primary} />}
+      >
         <BossProgress boss={data.boss ?? {}} />
       </Card>
 
-      <Card title="Nhiệm vụ đang mở" icon={<Ionicons name="flag-outline" size={22} color={colors.primary} />}>
+      <Card
+        title="Tất cả nhiệm vụ"
+        icon={<Ionicons name="list-outline" size={22} color={colors.primary} />}
+        headerRight={
+          <Text style={styles.countText}>
+            {Number(data.boss?.completedChallenges || 0)}/{challenges.length}
+          </Text>
+        }
+      >
+        <Text style={styles.helperText}>
+          Hoàn thành theo thứ tự, mỗi ngày một nhiệm vụ để làm boss yếu dần.
+        </Text>
         <ChallengeList
-          challenges={data.activeChallenges}
+          challenges={challenges}
+          challengeMessage={data.challengeMessage}
+          nextChallengeAvailableOn={data.nextChallengeAvailableOn}
+          bossStatus={data.boss?.status}
           completingChallengeId={completingChallengeId}
           onCompleteChallenge={onCompleteChallenge}
         />
@@ -28,5 +52,17 @@ export function BossScreen({ dashboard, completingChallengeId, onCompleteChallen
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  countText: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '900',
+  },
+  helperText: {
+    color: colors.onSurfaceVariant,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: -4,
   },
 });
