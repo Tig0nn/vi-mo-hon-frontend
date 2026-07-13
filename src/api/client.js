@@ -36,16 +36,22 @@ async function parseResponse(response) {
 
 async function apiRequest(path, options = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs || REQUEST_TIMEOUT_MS,
+  );
+  const { timeoutMs, ...fetchOptions } = options;
 
   try {
     const response = await fetch(buildUrl(path), {
       headers: {
         Accept: 'application/json',
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...options.headers,
+        ...(fetchOptions.body && !(fetchOptions.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+        ...fetchOptions.headers,
       },
-      ...options,
+      ...fetchOptions,
       signal: controller.signal,
     });
 
@@ -77,6 +83,14 @@ export function apiPost(path, body) {
   return apiRequest(path, {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+export function apiPostFormData(path, formData, options = {}) {
+  return apiRequest(path, {
+    method: 'POST',
+    body: formData,
+    timeoutMs: options.timeoutMs || 20000,
   });
 }
 
